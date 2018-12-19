@@ -163,6 +163,8 @@ function _parameter_check_branch(data::Dict{String,Any})
     messages[:bx_to_ratio] = Set{Int}()
 
     messages[:rx_ratio_xfer] = Set{Int}()
+    messages[:tm_range] = Set{Int}()
+    messages[:ta_range] = Set{Int}()
 
 
     for (i,branch) in data["branch"]
@@ -224,6 +226,16 @@ function _parameter_check_branch(data::Dict{String,Any})
             if rx_ratio >= 0.05
                 warn(LOGGER, "transformer branch $(i) r/x ratio $(rx_ratio) is above 0.05")
                 push!(messages[:rx_ratio_xfer], index)
+            end
+
+            if branch["tap"] < 0.9 || branch["tap"] > 1.1
+                warn(LOGGER, "transformer branch $(i) tap ratio $(branch["tap"]) is out side of the nominal range 0.9 - 1.1")
+                push!(messages[:tm_range], index)
+            end
+
+            if branch["shift"] < -0.174533 || branch["shift"] > 0.174533
+                warn(LOGGER, "transformer branch $(i) phase shift $(branch["shift"]) is out side of the range -0.174533 - 0.174533")
+                push!(messages[:ta_range], index)
             end
         end
     end
