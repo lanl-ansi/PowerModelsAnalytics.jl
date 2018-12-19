@@ -2,6 +2,7 @@ module PowerModelsAnalytics
 
 using InfrastructureModels
 using PowerModels
+using Plots
 using Memento
 
 
@@ -11,6 +12,7 @@ __init__() = Memento.register(LOGGER)
 
 
 include("core/parameters.jl")
+include("core/plots.jl")
 
 include("graph/metrics.jl")
 
