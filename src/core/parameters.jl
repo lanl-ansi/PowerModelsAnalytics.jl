@@ -127,7 +127,7 @@ function _parameter_check_gen(data::Dict{String,Any})
             end
 
             if gen["qmin"] < -max_pg_mag/12.0 && gen["qmax"] > max_pg_mag/4.0
-                warn(LOGGER, "generator $(i) reactive power capabilities $(gen["qmin"]) - $(gen["qmax"]) to do not match the 1/12 - 1/4 rule of active power capabilities")
+                warn(LOGGER, "generator $(i) reactive power capabilities $(gen["qmin"]) - $(gen["qmax"]) to do not match the 1/12 - 1/4 rule of active power capabilities $(max_pg_mag)")
                 push!(messages[:qg_bounds_shape], index)
             end
         end
@@ -170,7 +170,11 @@ function _parameter_check_branch(data::Dict{String,Any})
     for (i,branch) in data["branch"]
         index = branch["index"]
 
-        if branch["rate_a"] > branch["rate_b"] || branch["rate_b"] > branch["rate_c"]
+        rate_a = branch["rate_a"]
+        rate_b = haskey(branch, "rate_b") ? branch["rate_b"] : rate_a
+        rate_c = haskey(branch, "rate_c") ? branch["rate_c"] : rate_a
+
+        if rate_a > rate_b || rate_b > rate_c
             warn(LOGGER, "branch $(i) thermal limits are decreasing")
             push!(messages[:s_limit_decreasing], index)
         end
