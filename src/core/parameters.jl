@@ -176,7 +176,7 @@ function _parameter_check_branch(data::Dict{String,Any})
         end
 
         if branch["br_r"] < 0.0 || branch["br_x"] < 0.0
-            warn(LOGGER, "branch $(i) impedance $(branch["br_r"] + branch["br_z"]im) is non-positive")
+            warn(LOGGER, "branch $(i) impedance $(branch["br_r"] + branch["br_x"]im) is non-positive")
             push!(messages[:impedance], index)
         end
 
@@ -200,7 +200,7 @@ function _parameter_check_branch(data::Dict{String,Any})
         if !branch["transformer"]
             if rx_ratio >= 0.5
                 warn(LOGGER, "branch $(i) r/x ratio $(rx_ratio) is above 0.5")
-                push!(messages[:rx_ratio], index)
+                push!(messages[:rx_ratio_line], index)
             end
 
             if !isapprox(branch["b_fr"], 0.0)
