@@ -152,7 +152,7 @@ end
 function _parameter_check_branch(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
-    messages[:s_limit_decreasing] = Set{Int}()
+    messages[:mva_decreasing] = Set{Int}()
     messages[:impedance] = Set{Int}()
     messages[:reactance] = Set{Int}()
     messages[:admittance_fr] = Set{Int}()
