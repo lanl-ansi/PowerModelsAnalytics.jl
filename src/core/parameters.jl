@@ -176,7 +176,7 @@ function _parameter_check_branch(data::Dict{String,Any})
 
         if rate_a > rate_b || rate_b > rate_c
             warn(LOGGER, "branch $(i) thermal limits are decreasing")
-            push!(messages[:s_limit_decreasing], index)
+            push!(messages[:mva_decreasing], index)
         end
 
         if branch["br_r"] < 0.0 || branch["br_x"] < 0.0
