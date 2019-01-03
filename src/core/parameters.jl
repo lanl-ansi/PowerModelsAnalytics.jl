@@ -5,6 +5,10 @@ function parameter_check_summary(data::Dict{String,Any})
         error("parameter_check_summary does not yet support multinetwork data")
     end
 
+    if haskey(data, "conductors")
+        error("parameter_check_summary does not yet support multiconductor data")
+    end
+
     if !(haskey(data, "per_unit") && data["per_unit"])
         error("parameter_check_summary requires data in per_unit")
     end
@@ -153,19 +157,24 @@ function _parameter_check_branch(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
     messages[:mva_decreasing] = Set{Int}()
+    messages[:mva_redundant_15d] = Set{Int}()
+    messages[:mva_redundant_30d] = Set{Int}()
     messages[:impedance] = Set{Int}()
     messages[:reactance] = Set{Int}()
     messages[:admittance_fr] = Set{Int}()
     messages[:admittance_to] = Set{Int}()
 
+    messages[:basekv_line] = Set{Int}()
     messages[:rx_ratio_line] = Set{Int}()
     messages[:bx_fr_ratio] = Set{Int}()
     messages[:bx_to_ratio] = Set{Int}()
 
+    messages[:basekv_xfer] = Set{Int}()
     messages[:rx_ratio_xfer] = Set{Int}()
     messages[:tm_range] = Set{Int}()
     messages[:ta_range] = Set{Int}()
 
+    bus_lookup = Dict(bus["index"] => bus for (i,bus) in data["bus"])
 
     for (i,branch) in data["branch"]
         index = branch["index"]
@@ -174,9 +183,26 @@ function _parameter_check_branch(data::Dict{String,Any})
         rate_b = haskey(branch, "rate_b") ? branch["rate_b"] : rate_a
         rate_c = haskey(branch, "rate_c") ? branch["rate_c"] : rate_a
 
+        basekv_fr = bus_lookup[branch["f_bus"]]["base_kv"]
+        basekv_to = bus_lookup[branch["t_bus"]]["base_kv"]
+
         if rate_a > rate_b || rate_b > rate_c
             warn(LOGGER, "branch $(i) thermal limits are decreasing")
             push!(messages[:mva_decreasing], index)
+        end
+
+        # epsilon of 0.05 accounts for rounding in data
+        rate_ub_15 = _compute_mva_ub(branch, bus_lookup, 0.261798)
+        if rate_ub_15 < rate_a - 0.05
+            warn(LOGGER, "branch $(i) thermal limit A $(rate_a) is redundant with a 15 deg. angle difference $(rate_ub_15)")
+            push!(messages[:mva_redundant_15d], index)
+        end
+
+        # epsilon of 0.05 accounts for rounding in data
+        rate_ub_30 = _compute_mva_ub(branch, bus_lookup, 0.523598)
+        if rate_ub_30 < rate_a - 0.05
+            warn(LOGGER, "branch $(i) thermal limit A $(rate_a) is redundant with a 30 deg. angle difference $(rate_ub_30)")
+            push!(messages[:mva_redundant_30d], index)
         end
 
         if branch["br_r"] < 0.0 || branch["br_x"] < 0.0
@@ -201,7 +227,13 @@ function _parameter_check_branch(data::Dict{String,Any})
         end
 
         rx_ratio = abs(branch["br_r"]/branch["br_x"])
-        if !branch["transformer"]
+        if !branch["transformer"] # branch specific checks
+
+            if !isapprox(basekv_fr, basekv_to)
+                warn(LOGGER, "branch $(i) base kv values are different $(basekv_fr) - $(basekv_to)")
+                push!(messages[:basekv_line], index)
+            end
+
             if rx_ratio >= 0.5
                 warn(LOGGER, "branch $(i) r/x ratio $(rx_ratio) is above 0.5")
                 push!(messages[:rx_ratio_line], index)
@@ -226,7 +258,11 @@ function _parameter_check_branch(data::Dict{String,Any})
             end
 
         else # transformer specific checks
-            rx_ratio = abs(branch["br_r"]/branch["br_x"])
+            if isapprox(basekv_fr, basekv_to)
+                warn(LOGGER, "transformer branch $(i) base kv values are the same $(basekv_fr) - $(basekv_to)")
+                push!(messages[:basekv_xfer], index)
+            end
+
             if rx_ratio >= 0.05
                 warn(LOGGER, "transformer branch $(i) r/x ratio $(rx_ratio) is above 0.05")
                 push!(messages[:rx_ratio_xfer], index)
@@ -247,3 +283,30 @@ function _parameter_check_branch(data::Dict{String,Any})
     return messages
 end
 
+
+function _compute_mva_ub(branch::Dict{String,Any}, bus_lookup, vad_bound::Real)
+    vad_max = max(abs(branch["angmin"]), abs(branch["angmax"]))
+    if vad_bound > vad_max
+        info(LOGGER, "given vad bound $(vad_bound) is larger than branch vad max $(vad_max)")
+    end
+    vad_max = vad_bound
+
+    if vad_max > pi
+        error(LOGGER, "compute_mva_ub does not support vad bounds larger than pi, given $(vad_max)")
+    end
+
+    r = branch["br_r"]
+    x = branch["br_x"]
+    z = r + im * x
+    y = 1/z
+    y_mag = abs(y)
+
+    fr_vm_max = bus_lookup[branch["f_bus"]]["vmax"]
+    to_vm_max = bus_lookup[branch["t_bus"]]["vmax"]
+    vm_max = max(fr_vm_max, to_vm_max)
+
+    c_max = sqrt(fr_vm_max^2 + to_vm_max^2 - 2*fr_vm_max*to_vm_max*cos(vad_max))
+
+    rate_ub = y_mag*vm_max*c_max
+
+end
