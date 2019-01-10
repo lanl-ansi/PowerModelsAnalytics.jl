@@ -5,6 +5,7 @@ using PowerModels
 using Plots
 using Memento
 
+using Statistics
 
 # Create our module level logger
 const LOGGER = getlogger(@__MODULE__)

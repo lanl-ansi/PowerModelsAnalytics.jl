@@ -21,6 +21,8 @@ function parameter_check_summary(data::Dict{String,Any})
     messages["gen"] = _parameter_check_gen(data)
     messages["branch"] = _parameter_check_branch(data)
 
+    messages["network"] = _parameter_check_network(data)
+
     return messages
 end
 
@@ -310,3 +312,15 @@ function _compute_mva_ub(branch::Dict{String,Any}, bus_lookup, vad_bound::Real)
     rate_ub = y_mag*vm_max*c_max
 
 end
+
+
+function _parameter_check_network(data::Dict{String,Any})
+    messages = Dict{Symbol,Number}()
+
+    vm_center_list = [ (bus["vmax"]+bus["vmin"])/2.0 for (i,bus) in data["bus"] ]
+    messages[:vm_center_mean] = mean(vm_center_list)
+    messages[:vm_center_std] = std(vm_center_list)
+
+    return messages
+end
+
