@@ -1,14 +1,14 @@
 module PowerModelsAnalytics
 
-using InfrastructureModels
-using PowerModels
-using Plots
-using Memento
+import InfrastructureModels
+import PowerModels
+import Plots
+import Memento
 
-using Statistics
+import Statistics: mean, std
 
 # Create our module level logger
-const LOGGER = getlogger(@__MODULE__)
+const LOGGER = Memento.getlogger(@__MODULE__)
 __init__() = Memento.register(LOGGER)
 
 
