@@ -18,21 +18,22 @@ function plot_branch_impedance(data::Dict{String,Any})
 end
 
 
-function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blocks=false, buscoords=false, exclude_gens=nothing, node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"], gen_types=Dict("gen" => "pg", "storage"=>""))
+function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blocks=false, buscoords=false, exclude_gens=nothing, node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"], gen_types=Dict("gen" => "pg", "storage"=>"ps"))
     connected_buses = Set(br[k] for k in ["f_bus", "t_bus"] for br in values(get(data, "branch", Dict())))
 
     graph = MetaGraphs.MetaGraph(length(connected_buses))
+    bus_graph_map = Dict(bus["bus_i"] => i for (i, bus) in enumerate(values(get(data, "bus", Dict()))))
 
     if load_blocks
     else
         for edge_type in edge_types
             for edge in values(get(data, edge_type, Dict()))
-                MetaGraphs.add_edge!(graph, edge["f_bus"], edge["t_bus"])
+                MetaGraphs.add_edge!(graph, bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]])
                 props = Dict(:i => edge["index"],
                              :switch => get(edge, "dispatchable", false),
                              :status => get(edge, "br_status", 1),
                              :fixed => get(edge, "fixed", false))
-                MetaGraphs.set_props!(graph, MetaGraphs.Edge(edge["f_bus"], edge["t_bus"]), props)
+                MetaGraphs.set_props!(graph, MetaGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
             end
         end
 
@@ -51,9 +52,9 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
 
         islands = PowerModels.connected_components(data; edges=edge_types)
         for island in islands
-            is_energized = any(MetaGraphs.has_prop(graph, bus, :pg) && MetaGraphs.get_prop(graph, bus, :pg) > 0.0 for bus in island)
+            is_energized = any(MetaGraphs.has_prop(graph, bus_graph_map[bus], :pg) && MetaGraphs.get_prop(graph, bus_graph_map[bus], :pg) > 0.0 for bus in island)
             for bus in island
-                MetaGraphs.set_prop!(graph, bus, :energized, is_energized)
+                MetaGraphs.set_prop!(graph, bus_graph_map[bus], :energized, is_energized)
             end
         end
 
