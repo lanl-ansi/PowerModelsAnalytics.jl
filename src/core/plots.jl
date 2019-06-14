@@ -5,8 +5,12 @@ default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"yellow",
                                               "enabled line" => colorant"black",
                                               "disabled line" => colorant"orange",
                                               "energized bus" => colorant"green",
-                                              "generator bus" => colorant"orange",
-                                              "unenergized bus" => colorant"red")
+                                              "energized generator" => colorant"green",
+                                              "enabled generator" => colorant"orange",
+                                              "disabled generator" => colorant"red",
+                                              "unenergized bus" => colorant"red",
+                                              "connector" => colorant"lightgrey")
+
 
 function plot_branch_impedance(data::Dict{String,Any})
     r = [branch["br_r"] for (i,branch) in data["branch"]]
@@ -20,26 +24,50 @@ end
 
 function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blocks=false, buscoords=false, exclude_gens=nothing, node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"], gen_types=Dict("gen" => "pg", "storage"=>"ps"))
     connected_buses = Set(br[k] for k in ["f_bus", "t_bus"] for br in values(get(data, "branch", Dict())))
+    gens = [(key, gen) for key in keys(gen_types) for gen in values(get(data, key, Dict()))]
+    n_buses = length(connected_buses)
+    n_gens = length(gens)
 
-    graph = MetaGraphs.MetaGraph(length(connected_buses))
+    graph = MetaGraphs.MetaGraph(n_buses + n_gens)
     bus_graph_map = Dict(bus["bus_i"] => i for (i, bus) in enumerate(values(get(data, "bus", Dict()))))
+    gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_buses+1:n_buses+n_gens, gens))
 
     if load_blocks
     else
         for edge_type in edge_types
             for edge in values(get(data, edge_type, Dict()))
                 MetaGraphs.add_edge!(graph, bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]])
+
+                switch = get(edge, "dispatchable", false)
+                fixed = get(edge, "fixed", false)
+                status = Bool(get(edge, "br_status", 1))
+
                 props = Dict(:i => edge["index"],
-                             :switch => get(edge, "dispatchable", false),
-                             :status => get(edge, "br_status", 1),
-                             :fixed => get(edge, "fixed", false))
+                             :switch => switch,
+                             :status => status,
+                             :fixed => fixed,
+                             :label => edge_label ? edge["index"] : "",
+                             :edge_membership => switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line")
                 MetaGraphs.set_props!(graph, MetaGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
             end
         end
 
         for (gen_type, pg) in gen_types
             for gen in values(get(data, gen_type, Dict()))
-                MetaGraphs.set_prop!(graph, gen["$(gen_type)_bus"], :pg, get(gen, pg, 0.0))
+                MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
+                node_props = Dict(:label => gen_type[1],
+                                  :energized => get(gen, pg, 0.0) > 0 ? true : false,
+                                  :pg => get(gen, pg, 0.0),
+                                  :node_membership => get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : get(gen, pg, 0.0) > 0 ? "energized generator" : "enabled generator")
+                MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
+
+                edge_props = Dict(:label => "",
+                                  :i => 0,
+                                  :switch => false,
+                                  :status => 1,
+                                  :fixed => true,
+                                  :edge_membership => "connector")
+                MetaGraphs.set_props!(graph, MetaGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]]), edge_props)
             end
             pgs = [(node, MetaGraphs.get_prop(graph, node, :pg)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :pg)]
             if length(pgs) > 0
@@ -50,31 +78,29 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
             end
         end
 
-        islands = PowerModels.connected_components(data; edges=edge_types)
+        islands = try
+            islands = PowerModels.calc_connected_components(data; edges=edge_types)
+        catch
+            islands = PowerModels.connected_components(data, edges=edge_types)
+        end
+
         for island in islands
-            is_energized = any(MetaGraphs.has_prop(graph, bus_graph_map[bus], :pg) && MetaGraphs.get_prop(graph, bus_graph_map[bus], :pg) > 0.0 for bus in island)
+            is_energized = any(get(gen, pg, 0.0) > 0 for (gen_type, pg) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
             for bus in island
-                MetaGraphs.set_prop!(graph, bus_graph_map[bus], :energized, is_energized)
+                node_props = Dict(:label => node_label ? "$bus" : "",
+                                  :energized => is_energized,
+                                  :node_membership => is_energized ? "energized bus" : "unenergized bus")
+                MetaGraphs.set_props!(graph, bus_graph_map[bus], node_props)
             end
         end
 
-        node_membership = [MetaGraphs.has_prop(graph, node, :pg) ? 3 : MetaGraphs.get_prop(graph, node, :energized) ? 2 : 1 for node in MetaGraphs.vertices(graph)]
-        node_colors = [colors[k] for k in ["unenergized bus", "energized bus", "generator bus"]]
-        node_fills = node_colors[node_membership]
+        node_fills = [colors[MetaGraphs.get_prop(graph, node, :node_membership)] for node in MetaGraphs.vertices(graph)]
         node_sizes = [MetaGraphs.has_prop(graph, bus, :pg) ? sum(MetaGraphs.get_prop(graph, bus, :pg)) : 1.0 for bus in MetaGraphs.vertices(graph)]
-        node_labels = node_label ? collect(MetaGraphs.vertices(graph)) : ["" for i in 1:length(MetaGraphs.vertices(graph))]
+        node_labels = [MetaGraphs.get_prop(graph, node, :label) for node in MetaGraphs.vertices(graph)]
 
-        edge_membership = []
-        for edge in MetaGraphs.edges(graph)
-            switch = Bool(MetaGraphs.get_prop(graph, edge, :switch))
-            status = Bool(MetaGraphs.get_prop(graph, edge, :status))
-            fixed = Bool(MetaGraphs.get_prop(graph, edge, :fixed))
-            push!(edge_membership, switch && !status && !fixed ? 1 : switch && status && !fixed ? 2 : switch && !status && fixed ? 3 : switch && status && fixed ? 4 : !switch && status ? 5 : 6)
-        end
-        edge_colors = [colors[k] for k in ["open switch", "closed switch", "fixed open switch", "fixed closed switch", "enabled line", "disabled line"]]
-        edge_strokes = edge_colors[edge_membership]
+        edge_strokes = [colors[MetaGraphs.get_prop(graph, edge, :edge_membership)] for edge in MetaGraphs.edges(graph)]
         edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? 1.0 : 0.25 for edge in MetaGraphs.edges(graph)]
-        edge_labels = edge_label ? [MetaGraphs.get_prop(graph, edge, :i) for edge in MetaGraphs.edges(graph)] : ["" for i in 1:length(MetaGraphs.edges(graph))]
+        edge_labels = [MetaGraphs.get_prop(graph, edge, :label) for edge in MetaGraphs.edges(graph)]
 
         if buscoords
             pos = Dict(n => get(get(data["bus"], "$n", Dict()), "buscoord", missing) for n in MetaGraphs.vertices(graph))
@@ -90,8 +116,8 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
             loc_x, loc_y = kamada_kawai_layout(graph)
         end
 
-        Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels, edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes, nodefillc=node_fills, EDGELABELSIZE=2))
+        Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
+                                              edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
+                                              nodefillc=node_fills, EDGELABELSIZE=4, edgelabeldistx=0.6, edgelabeldisty=0.6))
     end
 end
-
-
