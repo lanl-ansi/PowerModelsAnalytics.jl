@@ -93,7 +93,7 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
             MetaGraphs.set_props!(graph, MetaGraphs.Edge(load_graph_map[load["index"]], bus_graph_map[load["load_bus"]]), edge_props)
 
             color_range = Colors.range(colors["unsupported load"], colors["supported load"], length=101)
-            load_status = trunc(Int, round(get(load, "status", 1.0) * 100))
+            load_status = trunc(Int, round(get(load, "status", 1.0) * 100)) + 1
             node_props = Dict(:label => "L",
                               :node_membership => load_status > 0 ? "supported load" : "unsupported load",
                               :node_color => color_range[load_status])

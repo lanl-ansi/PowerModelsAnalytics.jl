@@ -10,6 +10,8 @@ import GraphPlot
 
 import Colors
 import Colors: @colorant_str
+import ColorVectorSpace
+import FixedPointNumbers
 
 import Compose
 
