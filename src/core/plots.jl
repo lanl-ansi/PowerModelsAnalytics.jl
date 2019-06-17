@@ -63,7 +63,8 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
         for (gen_type, (pg, qg)) in gen_types
             for gen in values(get(data, gen_type, Dict()))
                 MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
-                node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : get(gen, pg, 0.0) > 0 ? "energized generator" : get(gen, pg, 0.0) == 0 && get(gen, qg, 0.0) > 0 ? "energized synchronous condenser" : "enabled generator"
+                is_condenser = gen["pmax"] == 0 && gen["pmin"] == 0
+                node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : get(gen, pg, 0.0) > 0 ? "energized generator" : is_condenser || (get(gen, pg, 0.0) == 0 && get(gen, qg, 0.0) > 0) ? "energized synchronous condenser" : "enabled generator"
                 label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
                 node_props = Dict(:label => label,
                                   :energized => gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) ? true : false,
@@ -169,5 +170,125 @@ end
 
 
 function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; exclude_gens=nothing, node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"], gen_types=Dict("gen" => "pg", "storage"=>"ps"))
-    Compose.draw(backend, GraphPlot.gplot())
+     _data = deepcopy(data)
+     for branch in values(get(_data, "branch", Dict()))
+        if get(branch, "dispatchable", false)
+            branch["br_status"] = 0
+        else
+            branch["br_status"] = 1
+        end
+    end
+
+    islands = try
+        islands = PowerModels.calc_connected_components(_data)
+    catch
+        islands = PowerModels.connected_components(_data)
+    end
+
+    connected_islands = try
+        connected_islands = PowerModels.calc_connected_components(data)
+    catch
+        connected_islands = PowerModels.connected_components(data)
+    end
+
+    gens = [(key, gen) for key in keys(gen_types) for gen in values(get(data, key, Dict()))]
+    n_islands = length(islands)
+    n_gens = length(gens)
+
+    island_graph_map = Dict(island => i for (i, island) in enumerate(islands))
+    connected_island_graph_map = Dict(i => connected_island for (island, i) in island_graph_map for bus in island for connected_island in connected_islands if bus in connected_island)
+    bus_island_map = Dict(bus => i for (island, i) in island_graph_map for bus in island)
+    gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_islands+1:n_islands+n_gens, gens))
+
+    graph = MetaGraphs.MetaGraph(n_islands + n_gens)
+
+    for edge_type in edge_types
+        for line in values(get(data, edge_type, Dict()))
+            f_island = bus_island_map[line["f_bus"]]
+            t_island = bus_island_map[line["t_bus"]]
+
+            if f_island != t_island
+                MetaGraphs.add_edge!(graph, f_island, t_island)
+
+                fixed = Bool(get(line, "fixed", false))
+                status = Bool(get(line, "br_status", 1))
+
+                edge_membership = !fixed && status ? "closed switch" : !fixed && !status ? "open switch" : fixed && status ? "fixed closed switch" : "fixed open switch"
+                edge_props = Dict(:label => edge_label ? "$(line["index"])" : "",
+                                  :switch => true,
+                                  :fixed => false,
+                                  :i => line["index"],
+                                  :edge_membership => edge_membership,
+                                  :edge_color => colors[edge_membership])
+
+                MetaGraphs.set_props!(graph, MetaGraphs.Edge(f_island, t_island), edge_props)
+            end
+        end
+    end
+
+    for (gen_type, (pg, qg)) in gen_types
+        for gen in values(get(data, gen_type, Dict()))
+            MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]])
+            is_condenser = gen["pmax"] == 0 && gen["pmin"] == 0
+            node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : get(gen, pg, 0.0) > 0 ? "energized generator" : is_condenser || (get(gen, pg, 0.0) == 0 && get(gen, qg, 0.0) > 0) ? "energized synchronous condenser" : "enabled generator"
+            label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
+            node_props = Dict(:label => label,
+                              :energized => gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) ? true : false,
+                              :pg => convert_nan(get(gen, pg, 0.0)),
+                              :qg => convert_nan(get(gen, qg, 0.0)),
+                              :node_membership => node_membership,
+                              :node_color => colors[node_membership])
+            MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
+
+            edge_props = Dict(:label => "",
+                              :switch => false,
+                              :edge_membership => "connector",
+                              :edge_color => colors["connector"])
+            MetaGraphs.set_props!(graph, MetaGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]]), edge_props)
+        end
+
+        pgs = [(node, MetaGraphs.get_prop(graph, node, :pg)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :pg)]
+        qgs = [(node, MetaGraphs.get_prop(graph, node, :qg)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :qg)]
+        if length(pgs) > 0 || length(qgs) > 0
+            pmin, pmax = minimum(filter(!isnan,Float64[v[2] for v in pgs])), maximum(filter(!isnan,Float64[v[2] for v in pgs]))
+            qmin, qmax = minimum(filter(!isnan,Float64[v[2] for v in qgs])), maximum(filter(!isnan,Float64[v[2] for v in qgs]))
+            amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
+            for (node, value) in pgs
+                MetaGraphs.set_prop!(graph, node, :g, (value - amin) / (amax - amin) * (2.0 - 1.0) + 1.0)
+            end
+        end
+    end
+
+    for node in MetaGraphs.vertices(graph)
+        if !(node in values(gen_graph_map))
+            island = connected_island_graph_map[node]
+            has_load = any(round(get(load, "status", 1.0)) > 0 for load in values(get(data, "load", Dict())) if load["load_bus"] in island)
+            is_energized = any(gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) for (gen_type, (pg, qg)) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
+            node_membership = has_load && is_energized ? "loaded enabled bus" : has_load && !is_energized ? "loaded disabled bus" : !has_load && is_energized ? "unloaded enabled bus" : "unloaded disabled bus"
+            node_props = Dict(:label => "$node",
+                            :energized => is_energized,
+                            :node_membership => node_membership,
+                            :node_color => colors[node_membership])
+
+            MetaGraphs.set_props!(graph, node, node_props)
+        end
+    end
+
+    for node in MetaGraphs.vertices(graph)
+        @debug node MetaGraphs.props(graph, node)
+    end
+
+    node_labels = [MetaGraphs.get_prop(graph, node, :label) for node in MetaGraphs.vertices(graph)]
+    node_sizes = [MetaGraphs.has_prop(graph, node, :g) ? MetaGraphs.get_prop(graph, node, :g) : 1.0 for node in MetaGraphs.vertices(graph)]
+    node_fills = [MetaGraphs.get_prop(graph, node, :node_color) for node in MetaGraphs.vertices(graph)]
+
+    edge_labels = [MetaGraphs.get_prop(graph, edge, :label) for edge in MetaGraphs.edges(graph)]
+    edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? 1.0 : 0.25 for edge in MetaGraphs.edges(graph)]
+    edge_strokes = [MetaGraphs.get_prop(graph, edge, :edge_color) for edge in MetaGraphs.edges(graph)]
+
+    loc_x, loc_y = kamada_kawai_layout(graph)
+
+    Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
+                                          edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
+                                          nodefillc=node_fills, EDGELABELSIZE=4, edgelabeldistx=0.6, edgelabeldisty=0.6))
 end
