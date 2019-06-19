@@ -26,7 +26,7 @@ LightGraphs = "^1.2"
 Memento = "0.11, ^0.12"
 MetaGraphs = "^0.6"
 Plots = "^0.25"
-PowerModels = "^0.10, ^0.11, ^0.12"
+PowerModels = "^0.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

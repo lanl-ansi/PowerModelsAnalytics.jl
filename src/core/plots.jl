@@ -93,12 +93,7 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
             end
         end
 
-        islands = try
-            islands = PowerModels.calc_connected_components(data; edges=edge_types)
-        catch
-            islands = PowerModels.connected_components(data, edges=edge_types)
-        end
-
+        islands = PowerModels.calc_connected_components(data; edges=edge_types)
         for island in islands
             is_energized = any(gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) for (gen_type, (pg, qg)) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
             for bus in island
@@ -179,18 +174,8 @@ function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; excl
         end
     end
 
-    islands = try
-        islands = PowerModels.calc_connected_components(_data)
-    catch
-        islands = PowerModels.connected_components(_data)
-    end
-
-    connected_islands = try
-        connected_islands = PowerModels.calc_connected_components(data)
-    catch
-        connected_islands = PowerModels.connected_components(data)
-    end
-
+    islands = PowerModels.calc_connected_components(_data)
+    connected_islands = PowerModels.calc_connected_components(data)
     gens = [(key, gen) for key in keys(gen_types) for gen in values(get(data, key, Dict()))]
     n_islands = length(islands)
     n_gens = length(gens)
