@@ -38,17 +38,17 @@ function _parameter_check_bus(data::Dict{String,Any})
         index = bus["index"]
 
         if bus["vmin"] <= 0.8 || bus["vmax"] >= 1.2
-            warn(LOGGER, "bus $(i) voltage magnitude bounds $(bus["vmin"]) - $(bus["vmax"]) are out side of typical bounds 0.8 - 1.2")
+            Memento.warn(LOGGER, "bus $(i) voltage magnitude bounds $(bus["vmin"]) - $(bus["vmax"]) are out side of typical bounds 0.8 - 1.2")
             push!(messages[:vm_bounds], index)
         end
 
         if bus["vm"] < bus["vmin"] || bus["vm"] > bus["vmax"]
-            warn(LOGGER, "bus $(i) voltage magnitude start is not within given bounds $(bus["vmin"]) - $(bus["vmax"])")
+            Memento.warn(LOGGER, "bus $(i) voltage magnitude start is not within given bounds $(bus["vmin"]) - $(bus["vmax"])")
             push!(messages[:vm_start], index)
         end
 
         if bus["bus_type"] == 3 && !isapprox(bus["va"], 0.0)
-            warn(LOGGER, "reference bus $(i) voltage angle start is not zero $(bus["va"])")
+            Memento.warn(LOGGER, "reference bus $(i) voltage angle start is not zero $(bus["va"])")
             push!(messages[:ref_bus], index)
         end
     end
@@ -67,12 +67,12 @@ function _parameter_check_load(data::Dict{String,Any})
         index = load["index"]
 
         if load["pd"] < 0.0
-            warn(LOGGER, "load $(i) is acting as an active power source")
+            Memento.warn(LOGGER, "load $(i) is acting as an active power source")
             push!(messages[:p_source], index)
         end
 
         if load["qd"] < 0.0
-            warn(LOGGER, "load $(i) is acting as a reactive power source")
+            Memento.warn(LOGGER, "load $(i) is acting as a reactive power source")
             push!(messages[:q_source], index)
         end
     end
@@ -90,7 +90,7 @@ function _parameter_check_shunt(data::Dict{String,Any})
         index = shunt["index"]
 
         if shunt["gs"] < 0.0 && shunt["bs"] < 0.0 || shunt["gs"] > 0.0 && shunt["bs"] > 0.0
-            warn(LOGGER, "shunt $(i) admittance has matching signs $(shunt["gs"] + shunt["bs"]im)")
+            Memento.warn(LOGGER, "shunt $(i) admittance has matching signs $(shunt["gs"] + shunt["bs"]im)")
             push!(messages[:sign_mismatch], index)
         end
     end
@@ -115,25 +115,25 @@ function _parameter_check_gen(data::Dict{String,Any})
         index = gen["index"]
         max_pg_mag = max(abs(gen["pmin"]), abs(gen["pmax"]))
 
-        if gen["pmin"] < 0.0 
-            warn(LOGGER, "generator $(i) can behave as an active power demand")
+        if gen["pmin"] < 0.0
+            Memento.warn(LOGGER, "generator $(i) can behave as an active power demand")
             push!(messages[:p_demand], index)
         end
 
         if gen["qmin"] > 0.0 || gen["qmax"] < 0.0
-            warn(LOGGER, "generator $(i) reactive power bounds $(gen["qmin"]) - $(gen["qmax"]) do not include 0.0")
+            Memento.warn(LOGGER, "generator $(i) reactive power bounds $(gen["qmin"]) - $(gen["qmax"]) do not include 0.0")
             push!(messages[:qg_bounds_nonzero], index)
         end
 
         # filter out reactive support devices
         if !isapprox(max_pg_mag, 0.0)
             if abs(gen["qmin"]) > max_pg_mag || abs(gen["qmax"]) > max_pg_mag
-                warn(LOGGER, "generator $(i) reactive power capabilities $(gen["qmin"]) - $(gen["qmax"]) exceed active power capabilities $(gen["pmin"]) - $(gen["pmax"])")
+                Memento.warn(LOGGER, "generator $(i) reactive power capabilities $(gen["qmin"]) - $(gen["qmax"]) exceed active power capabilities $(gen["pmin"]) - $(gen["pmax"])")
                 push!(messages[:qg_bounds_large], index)
             end
 
             if gen["qmin"] < -max_pg_mag/12.0 && gen["qmax"] > max_pg_mag/4.0
-                warn(LOGGER, "generator $(i) reactive power capabilities $(gen["qmin"]) - $(gen["qmax"]) to do not match the 1/12 - 1/4 rule of active power capabilities $(max_pg_mag)")
+                Memento.warn(LOGGER, "generator $(i) reactive power capabilities $(gen["qmin"]) - $(gen["qmax"]) to do not match the 1/12 - 1/4 rule of active power capabilities $(max_pg_mag)")
                 push!(messages[:qg_bounds_shape], index)
             end
         end
@@ -144,7 +144,7 @@ function _parameter_check_gen(data::Dict{String,Any})
             else
                 @assert gen["model"] == 2
                 if any(x < 0 for x in gen["cost"])
-                    warn(LOGGER, "generator $(i) has negative cost coefficients $(gen["cost"])")
+                    Memento.warn(LOGGER, "generator $(i) has negative cost coefficients $(gen["cost"])")
                     push!(messages[:cost_negative], index)
                 end
             end
@@ -189,41 +189,41 @@ function _parameter_check_branch(data::Dict{String,Any})
         basekv_to = bus_lookup[branch["t_bus"]]["base_kv"]
 
         if rate_a > rate_b || rate_b > rate_c
-            warn(LOGGER, "branch $(i) thermal limits are decreasing")
+            Memento.warn(LOGGER, "branch $(i) thermal limits are decreasing")
             push!(messages[:mva_decreasing], index)
         end
 
         # epsilon of 0.05 accounts for rounding in data
         rate_ub_15 = _compute_mva_ub(branch, bus_lookup, 0.261798)
         if rate_ub_15 < rate_a - 0.05
-            warn(LOGGER, "branch $(i) thermal limit A $(rate_a) is redundant with a 15 deg. angle difference $(rate_ub_15)")
+            Memento.warn(LOGGER, "branch $(i) thermal limit A $(rate_a) is redundant with a 15 deg. angle difference $(rate_ub_15)")
             push!(messages[:mva_redundant_15d], index)
         end
 
         # epsilon of 0.05 accounts for rounding in data
         rate_ub_30 = _compute_mva_ub(branch, bus_lookup, 0.523598)
         if rate_ub_30 < rate_a - 0.05
-            warn(LOGGER, "branch $(i) thermal limit A $(rate_a) is redundant with a 30 deg. angle difference $(rate_ub_30)")
+            Memento.warn(LOGGER, "branch $(i) thermal limit A $(rate_a) is redundant with a 30 deg. angle difference $(rate_ub_30)")
             push!(messages[:mva_redundant_30d], index)
         end
 
         if branch["br_r"] < 0.0 || branch["br_x"] < 0.0
-            warn(LOGGER, "branch $(i) impedance $(branch["br_r"] + branch["br_x"]im) is non-positive")
+            Memento.warn(LOGGER, "branch $(i) impedance $(branch["br_r"] + branch["br_x"]im) is non-positive")
             push!(messages[:impedance], index)
         end
 
         if branch["g_fr"] > 0.0 || branch["b_fr"] < 0.0
-            warn(LOGGER, "branch $(i) from-side admittance $(branch["g_fr"] + branch["b_fr"]im) signs may be incorrect")
+            Memento.warn(LOGGER, "branch $(i) from-side admittance $(branch["g_fr"] + branch["b_fr"]im) signs may be incorrect")
             push!(messages[:admittance_fr], index)
         end
 
         if branch["g_to"] > 0.0 || branch["b_to"] < 0.0
-            warn(LOGGER, "branch $(i) to-side admittance $(branch["g_to"] + branch["b_to"]im) signs may be incorrect")
+            Memento.warn(LOGGER, "branch $(i) to-side admittance $(branch["g_to"] + branch["b_to"]im) signs may be incorrect")
             push!(messages[:admittance_to], index)
         end
 
         if isapprox(branch["br_x"], 0.0)
-            warn(LOGGER, "branch $(i) reactance $(branch["br_x"]) is zero")
+            Memento.warn(LOGGER, "branch $(i) reactance $(branch["br_x"]) is zero")
             push!(messages[:reactance], index)
             continue
         end
@@ -232,12 +232,12 @@ function _parameter_check_branch(data::Dict{String,Any})
         if !branch["transformer"] # branch specific checks
 
             if !isapprox(basekv_fr, basekv_to)
-                warn(LOGGER, "branch $(i) base kv values are different $(basekv_fr) - $(basekv_to)")
+                Memento.warn(LOGGER, "branch $(i) base kv values are different $(basekv_fr) - $(basekv_to)")
                 push!(messages[:basekv_line], index)
             end
 
             if rx_ratio >= 0.5
-                warn(LOGGER, "branch $(i) r/x ratio $(rx_ratio) is above 0.5")
+                Memento.warn(LOGGER, "branch $(i) r/x ratio $(rx_ratio) is above 0.5")
                 push!(messages[:rx_ratio_line], index)
             end
 
@@ -245,7 +245,7 @@ function _parameter_check_branch(data::Dict{String,Any})
                 bx_ratio = abs(branch["b_fr"]/branch["br_x"])
 
                 if bx_ratio > 0.5 || bx_ratio < 0.04
-                    warn(LOGGER, "branch $(i) from-side b/x ratio $(bx_ratio) is outside the range 0.04 - 0.5")
+                    Memento.warn(LOGGER, "branch $(i) from-side b/x ratio $(bx_ratio) is outside the range 0.04 - 0.5")
                     push!(messages[:bx_fr_ratio], index)
                 end
             end
@@ -254,29 +254,29 @@ function _parameter_check_branch(data::Dict{String,Any})
                 bx_ratio = abs(branch["b_to"]/branch["br_x"])
 
                 if bx_ratio > 0.5 || bx_ratio < 0.04
-                    warn(LOGGER, "branch $(i) to-side b/x ratio $(bx_ratio) is outside the range 0.04 - 0.5")
+                    Memento.warn(LOGGER, "branch $(i) to-side b/x ratio $(bx_ratio) is outside the range 0.04 - 0.5")
                     push!(messages[:bx_to_ratio], index)
                 end
             end
 
         else # transformer specific checks
             if isapprox(basekv_fr, basekv_to)
-                warn(LOGGER, "transformer branch $(i) base kv values are the same $(basekv_fr) - $(basekv_to)")
+                Memento.warn(LOGGER, "transformer branch $(i) base kv values are the same $(basekv_fr) - $(basekv_to)")
                 push!(messages[:basekv_xfer], index)
             end
 
             if rx_ratio >= 0.05
-                warn(LOGGER, "transformer branch $(i) r/x ratio $(rx_ratio) is above 0.05")
+                Memento.warn(LOGGER, "transformer branch $(i) r/x ratio $(rx_ratio) is above 0.05")
                 push!(messages[:rx_ratio_xfer], index)
             end
 
             if branch["tap"] < 0.9 || branch["tap"] > 1.1
-                warn(LOGGER, "transformer branch $(i) tap ratio $(branch["tap"]) is out side of the nominal range 0.9 - 1.1")
+                Memento.warn(LOGGER, "transformer branch $(i) tap ratio $(branch["tap"]) is out side of the nominal range 0.9 - 1.1")
                 push!(messages[:tm_range], index)
             end
 
             if branch["shift"] < -0.174533 || branch["shift"] > 0.174533
-                warn(LOGGER, "transformer branch $(i) phase shift $(branch["shift"]) is out side of the range -0.174533 - 0.174533")
+                Memento.warn(LOGGER, "transformer branch $(i) phase shift $(branch["shift"]) is out side of the range -0.174533 - 0.174533")
                 push!(messages[:ta_range], index)
             end
         end
@@ -289,7 +289,7 @@ end
 function _compute_mva_ub(branch::Dict{String,Any}, bus_lookup, vad_bound::Real)
     vad_max = max(abs(branch["angmin"]), abs(branch["angmax"]))
     if vad_bound > vad_max
-        info(LOGGER, "given vad bound $(vad_bound) is larger than branch vad max $(vad_max)")
+        Memento.info(LOGGER, "given vad bound $(vad_bound) is larger than branch vad max $(vad_max)")
     end
     vad_max = vad_bound
 
