@@ -63,13 +63,13 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
         for (gen_type, (pg, qg)) in gen_types
             for gen in values(get(data, gen_type, Dict()))
                 MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
-                is_condenser = gen["pmax"] == 0 && gen["pmin"] == 0
-                node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : get(gen, pg, 0.0) > 0 ? "energized generator" : is_condenser || (get(gen, pg, 0.0) == 0 && get(gen, qg, 0.0) > 0) ? "energized synchronous condenser" : "enabled generator"
+                is_condenser = all(get(gen, "pmax", 0.0) .== 0) && all(get(gen, "pmin", 0.0) .== 0)
+                node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : any(get(gen, pg, 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, pg, 0.0) .== 0) && any(get(gen, qg, 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
                 label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
                 node_props = Dict(:label => label,
-                                  :energized => gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) ? true : false,
-                                  :pg => convert_nan(get(gen, pg, 0.0)),
-                                  :qg => convert_nan(get(gen, qg, 0.0)),
+                                  :energized => get(gen, "gen_status", 1) == 1 && (any(get(gen, pg, 0.0) .> 0) || any(get(gen, qg, 0.0) .> 0)) ? true : false,
+                                  :pg => convert_nan(sum(get(gen, pg, 0.0))),
+                                  :qg => convert_nan(sum(get(gen, qg, 0.0))),
                                   :node_membership => node_membership,
                                   :node_color => colors[node_membership])
                 MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
@@ -95,7 +95,7 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
 
         islands = PowerModels.calc_connected_components(data; edges=edge_types)
         for island in islands
-            is_energized = any(gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) for (gen_type, (pg, qg)) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
+            is_energized = any(get(gen, "gen_status", 1) == 1 && (any(get(gen, pg, 0.0) .> 0) || any(get(gen, qg, 0.0) .> 0)) for (gen_type, (pg, qg)) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
             for bus in island
                 node_membership = data["bus"]["$bus"]["bus_type"] == 4 ? "unloaded disabled bus" : "unloaded enabled bus"
                 node_props = Dict(:label => node_label ? "$bus" : "",
@@ -108,13 +108,13 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
 
         for load in values(get(data, "load", Dict()))
             color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=101)
-            load_status = trunc(Int, round(get(load, "status", 1.0) * 100)) + 1
+            load_status = trunc(Int, round(sum(get(load, "status", 1.0) * 100))) + 1
 
             bus_type = data["bus"]["$(load["load_bus"])"]["bus_type"]
             energized = MetaGraphs.get_prop(graph, bus_graph_map[load["load_bus"]], :energized)
 
             node_membership = "unloaded disabled bus"
-            if load["pd"] > 0 || load["qd"] > 0
+            if any(load["pd"] .> 0) || any(load["qd"] .> 0)
                 if bus_type == 4 || !energized
                     node_membership = "loaded disabled bus"
                 elseif bus_type != 4 && energized
@@ -195,7 +195,7 @@ function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; excl
             if f_island != t_island
                 MetaGraphs.add_edge!(graph, f_island, t_island)
 
-                fixed = Bool(get(line, "fixed", false))
+                fixed = Bool(all(get(line, "fixed", false)))
                 status = Bool(get(line, "br_status", 1))
 
                 edge_membership = !fixed && status ? "closed switch" : !fixed && !status ? "open switch" : fixed && status ? "fixed closed switch" : "fixed open switch"
@@ -214,13 +214,13 @@ function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; excl
     for (gen_type, (pg, qg)) in gen_types
         for gen in values(get(data, gen_type, Dict()))
             MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]])
-            is_condenser = gen["pmax"] == 0 && gen["pmin"] == 0
-            node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : get(gen, pg, 0.0) > 0 ? "energized generator" : is_condenser || (get(gen, pg, 0.0) == 0 && get(gen, qg, 0.0) > 0) ? "energized synchronous condenser" : "enabled generator"
+            is_condenser = all(get(gen, "pmax", 0.0) .== 0) && all(get(gen, "pmin", 0.0) .== 0)
+            node_membership = get(gen, "$(gen_type)_status", 1) == 0 ? "disabled generator" : any(get(gen, pg, 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, pg, 0.0) .== 0) && any(get(gen, qg, 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
             label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
             node_props = Dict(:label => label,
-                              :energized => gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) ? true : false,
-                              :pg => convert_nan(get(gen, pg, 0.0)),
-                              :qg => convert_nan(get(gen, qg, 0.0)),
+                              :energized => get(gen, "gen_status", 1) == 1 && (any(get(gen, pg, 0.0) .> 0) || any(get(gen, qg, 0.0) .> 0)) ? true : false,
+                              :pg => convert_nan(sum(get(gen, pg, 0.0))),
+                              :qg => convert_nan(sum(get(gen, qg, 0.0))),
                               :node_membership => node_membership,
                               :node_color => colors[node_membership])
             MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
@@ -248,7 +248,7 @@ function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; excl
         if !(node in values(gen_graph_map))
             island = connected_island_graph_map[node]
             has_load = any(round(get(load, "status", 1.0)) > 0 for load in values(get(data, "load", Dict())) if load["load_bus"] in island)
-            is_energized = any(gen["gen_status"] == 1 && (get(gen, pg, 0.0) > 0 || get(gen, qg, 0.0) > 0) for (gen_type, (pg, qg)) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
+            is_energized = any(get(gen, "gen_status", 1) == 1 && (any(get(gen, pg, 0.0) .> 0) || any(get(gen, qg, 0.0) .> 0)) for (gen_type, (pg, qg)) in gen_types for gen in values(get(data, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
             node_membership = has_load && is_energized ? "loaded enabled bus" : has_load && !is_energized ? "loaded disabled bus" : !has_load && is_energized ? "unloaded enabled bus" : "unloaded disabled bus"
             node_props = Dict(:label => "$node",
                             :energized => is_energized,
