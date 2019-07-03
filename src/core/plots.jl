@@ -15,8 +15,11 @@ default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"yellow",
                                               "loaded enabled bus" => colorant"green",
                                               "connector" => colorant"lightgrey")
 
+""
 convert_nan(x) = isnan(x) ? 0.0 : x
 
+
+""
 function plot_branch_impedance(data::Dict{String,Any})
     r = [branch["br_r"] for (i,branch) in data["branch"]]
     x = [branch["br_x"] for (i,branch) in data["branch"]]
@@ -27,7 +30,12 @@ function plot_branch_impedance(data::Dict{String,Any})
 end
 
 
-function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blocks=false, buscoords=false, exclude_gens=nothing, node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"], gen_types=Dict("gen" => ["pg", "qg"], "storage"=>["ps", "qs"]))
+""
+function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blocks=false, buscoords=false, exclude_gens=nothing,
+                      node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"],
+                      gen_types=Dict("gen" => ["pg", "qg"], "storage"=>["ps", "qs"]), spring_const=1e-3,
+                      return_positions=false, positions=nothing)
+
     connected_buses = Set(br[k] for k in ["f_bus", "t_bus"] for br in values(get(data, "branch", Dict())))
     gens = [(key, gen) for key in keys(gen_types) for gen in values(get(data, key, Dict()))]
     n_buses = length(connected_buses)
@@ -36,6 +44,10 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
     graph = MetaGraphs.MetaGraph(n_buses + n_gens)
     bus_graph_map = Dict(bus["bus_i"] => i for (i, bus) in enumerate(values(get(data, "bus", Dict()))))
     gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_buses+1:n_buses+n_gens, gens))
+
+    graph_bus_map = Dict(v => k for (k, v) in bus_graph_map)
+    graph_gen_map = Dict(v => k for (k, v) in gen_graph_map)
+    graph_map = merge(graph_bus_map, graph_gen_map)
 
     if load_blocks
         plot_load_blocks(data, backend; exclude_gens=exclude_gens, node_label=node_label, colors=colors, edge_types=edge_types, gen_types=gen_types)
@@ -50,12 +62,12 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
 
                 edge_membership = switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line"
                 props = Dict(:i => edge["index"],
-                             :switch => switch,
-                             :status => status,
-                             :fixed => fixed,
-                             :label => edge_label ? edge["index"] : "",
-                             :edge_membership => edge_membership,
-                             :edge_color => colors[edge_membership])
+                            :switch => switch,
+                            :status => status,
+                            :fixed => fixed,
+                            :label => edge_label ? edge["index"] : "",
+                            :edge_membership => edge_membership,
+                            :edge_color => colors[edge_membership])
                 MetaGraphs.set_props!(graph, MetaGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
             end
         end
@@ -143,28 +155,54 @@ function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blo
         edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? 1.0 : 0.25 for edge in MetaGraphs.edges(graph)]
         edge_labels = [MetaGraphs.get_prop(graph, edge, :label) for edge in MetaGraphs.edges(graph)]
 
-        if buscoords
-            pos = Dict(n => get(get(data["bus"], "$n", Dict()), "buscoord", missing) for n in MetaGraphs.vertices(graph))
-            avg_x, avg_y = mean(hcat(skipmissing([v for v in values(pos)])...), dims=2)
-            for (v, p) in pos
-                if ismissing(p)
-                    pos[v] = [avg_x, avg_y]
-                end
-            end
-            fixed = [n for n in MetaGraphs.vertices(graph) if "buscoord" in keys(get(data["bus"], "$n", Dict()))]
-            loc_x, loc_y = spring_layout(graph; pos=pos, fixed=fixed, k=0.1, iterations=200)
+        if positions != nothing
+            loc_x, loc_y = positions
         else
-            loc_x, loc_y = kamada_kawai_layout(graph)
+            if buscoords
+                pos = Dict()
+                fixed = []
+                for n in MetaGraphs.vertices(graph)
+                    lookup = graph_map[n]
+                    if isa(lookup, String)
+                        gen_type, i = split(lookup, "_")
+                        gen_bus = data[gen_type][i]["$(gen_type)_bus"]
+                        pos[n] = get(data["bus"]["$gen_bus"], "buscoord", missing)
+                    else
+                        pos[n] = get(data["bus"]["$lookup"], "buscoord", missing)
+                        if haskey(data["bus"]["$lookup"], "buscoord")
+                            push!(fixed, n)
+                        end
+                    end
+                end
+                avg_x, avg_y = mean(hcat(skipmissing([v for v in values(pos)])...), dims=2)
+                std_x, std_y = std(hcat(skipmissing([v for v in values(pos)])...), dims=2)
+                for (v, p) in pos
+                    if ismissing(p)
+                        pos[v] = [avg_x+std_x*rand(), avg_y+std_y*rand()]
+                    end
+                end
+                loc_x, loc_y = spring_layout(graph; pos=pos, fixed=fixed, k=spring_const*minimum(std([p for p in values(pos)])), iterations=100)
+            else
+                loc_x, loc_y = kamada_kawai_layout(graph)
+            end
         end
 
         Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
                                               edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
                                               nodefillc=node_fills, EDGELABELSIZE=4, edgelabeldistx=0.6, edgelabeldisty=0.6))
+
+        if return_positions
+            return loc_x, loc_y
+        end
     end
 end
 
 
-function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; exclude_gens=nothing, node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"], gen_types=Dict("gen" => "pg", "storage"=>"ps"))
+function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; exclude_gens=nothing, node_label=false,
+                          edge_label=false, colors=default_colors, edge_types=["branch", "trans"],
+                          gen_types=Dict("gen" => "pg", "storage"=>"ps"),
+                          return_positions=false, positions=nothing)
+
      _data = deepcopy(data)
      for branch in values(get(_data, "branch", Dict()))
         if get(branch, "dispatchable", false)
@@ -271,9 +309,18 @@ function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; excl
     edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? 1.0 : 0.25 for edge in MetaGraphs.edges(graph)]
     edge_strokes = [MetaGraphs.get_prop(graph, edge, :edge_color) for edge in MetaGraphs.edges(graph)]
 
-    loc_x, loc_y = kamada_kawai_layout(graph)
+
+    if positions != nothing
+        loc_x, loc_y = positions
+    else
+        loc_x, loc_y = kamada_kawai_layout(graph)
+    end
 
     Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
                                           edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
                                           nodefillc=node_fills, EDGELABELSIZE=4, edgelabeldistx=0.6, edgelabeldisty=0.6))
+
+    if return_positions
+        return loc_x, loc_y
+    end
 end

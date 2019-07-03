@@ -16,6 +16,7 @@ import FixedPointNumbers
 import Compose
 
 import Statistics: mean, std
+import Random: rand
 
 import PyCall
 
