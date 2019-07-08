@@ -11,7 +11,7 @@ default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"yellow",
                                               "disabled generator" => colorant"red",
                                               "unloaded enabled bus" => colorant"black",
                                               "unloaded disabled bus" => colorant"grey",
-                                              "loaded disabled bus" => colorant"red",
+                                              "loaded disabled bus" => colorant"yellow",
                                               "loaded enabled bus" => colorant"green",
                                               "connector" => colorant"lightgrey")
 
@@ -32,9 +32,11 @@ end
 
 ""
 function plot_network(data::Dict{String,Any}, backend::Compose.Backend; load_blocks=false, buscoords=false, exclude_gens=nothing,
-                      node_label=false, edge_label=false, colors=default_colors, edge_types=["branch", "trans"],
+                      node_label=false, edge_label=false, colors=Dict(), edge_types=["branch", "trans"],
                       gen_types=Dict("gen" => ["pg", "qg"], "storage"=>["ps", "qs"]), spring_const=1e-3,
                       return_positions=false, positions=nothing)
+
+    colors = merge(default_colors, colors)
 
     connected_buses = Set(br[k] for k in ["f_bus", "t_bus"] for br in values(get(data, "branch", Dict())))
     gens = [(key, gen) for key in keys(gen_types) for gen in values(get(data, key, Dict()))]
@@ -199,9 +201,11 @@ end
 
 
 function plot_load_blocks(data::Dict{String,Any}, backend::Compose.Backend; exclude_gens=nothing, node_label=false,
-                          edge_label=false, colors=default_colors, edge_types=["branch", "trans"],
+                          edge_label=false, colors=Dict(), edge_types=["branch", "trans"],
                           gen_types=Dict("gen" => "pg", "storage"=>"ps"),
                           return_positions=false, positions=nothing)
+
+    colors = merge(default_colors, colors)
 
      _data = deepcopy(data)
      for branch in values(get(_data, "branch", Dict()))
