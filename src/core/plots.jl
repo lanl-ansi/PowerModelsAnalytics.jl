@@ -33,7 +33,7 @@ end
 """
     plot_network(network, backend; kwargs...)
 
-Plots a whole `network` at the bus-level to `backend`.
+Plots a whole `network` at the bus-level to `backend`. Returns `MetaGraph` and `positions`.
 
 kwargs
 ------
@@ -241,7 +241,7 @@ end
 """
     plot_load_blocks(network, backend; kwargs...)
 
-Plots a power `network` at the load-block-level on `backend`
+Plots a power `network` at the load-block-level on `backend`. Returns `MetaGraph` and `positions`.
 
 kwargs
 ------
