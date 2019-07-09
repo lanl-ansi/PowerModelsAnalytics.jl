@@ -75,7 +75,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
 
-    connected_buses = Set(br[k] for k in ["f_bus", "t_bus"] for br in values(get(network, "branch", Dict())))
+    connected_buses = Set(edge[k] for k in ["f_bus", "t_bus"] for edge_type in edge_types for edge in values(get(network, edge_type, Dict())))
     gens = [(gen_type, gen) for gen_type in keys(gen_types) for gen in values(get(network, gen_type, Dict()))]
     n_buses = length(connected_buses)
     n_gens = length(gens)
@@ -116,17 +116,17 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
             node_membership = get(gen, get(keymap, "status", "gen_status"), 1) == 0 ? "disabled generator" : any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, get(keymap, "active", "pg"), 0.0) .== 0) && any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
             label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
             node_props = Dict(:label => label,
-                                :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
-                                :active_power => convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
-                                :reactive_power => convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
-                                :node_membership => node_membership,
-                                :node_color => colors[node_membership])
+                              :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
+                              :active_power => convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
+                              :reactive_power => convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
+                              :node_membership => node_membership,
+                              :node_color => colors[node_membership])
             MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
 
             edge_props = Dict(:label => "",
-                                :switch => false,
-                                :edge_membership => "connector",
-                                :edge_color => colors["connector"])
+                              :switch => false,
+                              :edge_membership => "connector",
+                              :edge_color => colors["connector"])
             MetaGraphs.set_props!(graph, MetaGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]]), edge_props)
         end
 
@@ -148,12 +148,14 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     for island in islands
         is_energized = any(get(gen, get(keymap, "status", "gen_status"), 1.0) != 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) for (gen_type, keymap) in gen_types for gen in values(get(network, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
         for bus in island
-            node_membership = get(get(get(network, "bus", Dict()), "$bus", Dict()), "bus_type", 1) == 4 ? "unloaded disabled bus" : "unloaded enabled bus"
-            node_props = Dict(:label => node_label ? "$bus" : "",
+            if bus in connected_buses
+                node_membership = get(get(get(network, "bus", Dict()), "$bus", Dict()), "bus_type", 1) == 4 ? "unloaded disabled bus" : "unloaded enabled bus"
+                node_props = Dict(:label => node_label ? "$bus" : "",
                                 :energized => is_energized,
                                 :node_membership => node_membership,
                                 :node_color => colors[node_membership])
-            MetaGraphs.set_props!(graph, bus_graph_map[bus], node_props)
+                MetaGraphs.set_props!(graph, bus_graph_map[bus], node_props)
+            end
         end
     end
 
@@ -175,7 +177,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
             end
         end
         node_props = Dict(:node_membership => node_membership,
-                            :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
+                          :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
         MetaGraphs.set_props!(graph, bus_graph_map[bus["bus_i"]], node_props)
     end
 
