@@ -70,7 +70,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         switch::String="switchable",
                         buscoords::Bool=false,
                         spring_const::Float64=1e-3,
-                        positions::Union{Nothing,Array{Float64,2}}=nothing)
+                        positions::Union{Nothing,Array}=nothing)
 
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
@@ -274,7 +274,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
                                                                              "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
                             exclude_gens::Union{Nothing,Array{String}}=nothing,
                             switch::String="switchable",
-                            positions::Union{Nothing,Array{Float64,2}}=nothing)
+                            positions::Union{Nothing,Array}=nothing)
 
     # Setup Colors
     colors = merge(default_colors, colors)
