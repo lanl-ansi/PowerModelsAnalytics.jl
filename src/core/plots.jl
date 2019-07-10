@@ -5,14 +5,14 @@ default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"yellow",
                                               "enabled line" => colorant"black",
                                               "disabled line" => colorant"orange",
                                               "energized bus" => colorant"green",
-                                              "energized generator" => colorant"green",
+                                              "energized generator" => colorant"cyan",
                                               "energized synchronous condenser" => colorant"yellow",
                                               "enabled generator" => colorant"orange",
                                               "disabled generator" => colorant"red",
-                                              "unloaded enabled bus" => colorant"black",
-                                              "unloaded disabled bus" => colorant"grey",
-                                              "loaded disabled bus" => colorant"yellow",
-                                              "loaded enabled bus" => colorant"green",
+                                              "unloaded enabled bus" => colorant"darkgrey",
+                                              "unloaded disabled bus" => colorant"grey95",
+                                              "loaded disabled bus" => colorant"gold",
+                                              "loaded enabled bus" => colorant"green3",
                                               "connector" => colorant"lightgrey")
 
 "converts nan values to 0.0"
@@ -62,7 +62,7 @@ kwargs
 function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         node_label::Bool=false,
                         edge_label::Bool=false,
-                        colors::Dict{String,Colors.Colorant}=Dict{String,Colors.Colorant}(),
+                        colors::Dict=Dict(),
                         edge_types::Array{String}=["branch", "dcline", "trans"],
                         gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
                                                                          "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
@@ -70,7 +70,9 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         switch::String="switchable",
                         buscoords::Bool=false,
                         spring_const::Float64=1e-3,
-                        positions::Union{Nothing,Array}=nothing)
+                        positions::Union{Nothing,Array}=nothing,
+                        node_size_limits=[1, 2.5],
+                        fontsize=12)
 
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
@@ -138,7 +140,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
         if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
                 amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
             for (node, value) in active_powers
-                MetaGraphs.set_prop!(graph, node, :node_size, (value - amin) / (amax - amin) * (2.0 - 1.0) + 1.0)
+                MetaGraphs.set_prop!(graph, node, :node_size, (value - amin) / (amax - amin) * (node_size_limits[2] - node_size_limits[1]) + node_size_limits[1])
             end
         end
     end
@@ -188,7 +190,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
 
     # Collect Node properties (color fill, sizes, labels)
     node_fills = [MetaGraphs.get_prop(graph, node, :node_color) for node in MetaGraphs.vertices(graph)]
-    node_sizes = [MetaGraphs.has_prop(graph, bus, :node_size) ? sum(MetaGraphs.get_prop(graph, bus, :node_size)) : 1.0 for bus in MetaGraphs.vertices(graph)]
+    node_sizes = [MetaGraphs.has_prop(graph, bus, :node_size) ? sum(MetaGraphs.get_prop(graph, bus, :node_size)) : node_size_limits[1] for bus in MetaGraphs.vertices(graph)]
     node_labels = [MetaGraphs.get_prop(graph, node, :label) for node in MetaGraphs.vertices(graph)]
 
     # Collect Edge properties (stroke color, edge weights, labels)
