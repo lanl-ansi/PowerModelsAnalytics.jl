@@ -165,7 +165,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     for bus in values(get(network, "bus", Dict()))
         loads = [load for load in values(get(network, "load", Dict())) if load["load_bus"] == bus["bus_i"]]
         load_status = length(loads) > 0 ? trunc(Int, round(sum(mean(get(load, "status", 1.0) for load in loads) * 10))) + 1 : 1
-        energized = MetaGraphs.get_prop(graph, bus_graph_map[bus["bus_i"]], :energized)
+        energized = MetaGraphs.has_prop(graph, bus_graph_map[bus["bus_i"]], :energized) ? MetaGraphs.get_prop(graph, bus_graph_map[bus["bus_i"]], :energized) : false
         node_membership = "unloaded disabled bus"
         if any(any(load["pd"] .> 0) for load in loads) || any(any(load["qd"] .> 0) for load in loads)
             if get(bus, "bus_type", 1) == 4 || !energized
@@ -191,7 +191,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     # Collect Node properties (color fill, sizes, labels)
     node_fills = [MetaGraphs.get_prop(graph, node, :node_color) for node in MetaGraphs.vertices(graph)]
     node_sizes = [MetaGraphs.has_prop(graph, bus, :node_size) ? sum(MetaGraphs.get_prop(graph, bus, :node_size)) : node_size_limits[1] for bus in MetaGraphs.vertices(graph)]
-    node_labels = [MetaGraphs.get_prop(graph, node, :label) for node in MetaGraphs.vertices(graph)]
+    node_labels = [MetaGraphs.has_prop(graph, node, :label) ? MetaGraphs.get_prop(graph, node, :label) : "" for node in MetaGraphs.vertices(graph)]
 
     # Collect Edge properties (stroke color, edge weights, labels)
     edge_strokes = [MetaGraphs.get_prop(graph, edge, :edge_color) for edge in MetaGraphs.edges(graph)]
