@@ -37,9 +37,9 @@ Plots a whole `network` at the bus-level to `backend`. Returns `MetaGraph` and `
 
 kwargs
 ------
-    nodel_label::Bool
+    label_nodes::Bool
         Plot labels on nodes (Default: false)
-    edge_label::Bool
+    label_edges::Bool
         Plot labels on edges (Default: false)
     colors::Dict{String,Colors.Colorant}
         Changes to default colors, see `default_colors` for available components. (Default: Dict())
@@ -60,8 +60,8 @@ kwargs
         Used to specify node locations of graph (avoids running layout algorithm every time)
 """
 function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
-                        node_label::Bool=false,
-                        edge_label::Bool=false,
+                        label_nodes::Bool=false,
+                        label_edges::Bool=false,
                         colors::Dict=Dict(),
                         edge_types::Array{String}=["branch", "dcline", "trans"],
                         gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
@@ -103,7 +103,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         :switch => switch,
                         :status => status,
                         :fixed => fixed,
-                        :label => edge_label ? edge["index"] : "",
+                        :label => label_edges ? edge["index"] : "",
                         :edge_membership => edge_membership,
                         :edge_color => colors[edge_membership])
             MetaGraphs.set_props!(graph, MetaGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
@@ -116,7 +116,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
             MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
             is_condenser = all(get(gen, get(keymap, "active_max", "pmax"), 0.0) .== 0) && all(get(gen, get(keymap, "active_min", "pmin"), 0.0) .== 0)
             node_membership = get(gen, get(keymap, "status", "gen_status"), 1) == 0 ? "disabled generator" : any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, get(keymap, "active", "pg"), 0.0) .== 0) && any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
-            label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
+            label = gen_type == "storage" ? "S" : is_condenser ? "C" : "~"
             node_props = Dict(:label => label,
                               :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
                               :active_power => convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
@@ -152,7 +152,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
         for bus in island
             if bus in connected_buses
                 node_membership = get(get(get(network, "bus", Dict()), "$bus", Dict()), "bus_type", 1) == 4 ? "unloaded disabled bus" : "unloaded enabled bus"
-                node_props = Dict(:label => node_label ? "$bus" : "",
+                node_props = Dict(:label => label_nodes ? "$bus" : "",
                                 :energized => is_energized,
                                 :node_membership => node_membership,
                                 :node_color => colors[node_membership])
@@ -249,9 +249,9 @@ Plots a power `network` at the load-block-level on `backend`. Returns `MetaGraph
 
 kwargs
 ------
-    nodel_label::Bool
+    label_nodes::Bool
         Plot labels on nodes (Default: false)
-    edge_label::Bool
+    label_edges::Bool
         Plot labels on edges (Default: false)
     colors::Dict{String,Colors.Colorant}
         Changes to default colors, see `default_colors` for available components. (Default: Dict())
@@ -268,8 +268,8 @@ kwargs
         Used to specify node locations of graph (avoids running layout algorithm every time)
 """
 function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
-                            node_label::Bool=false,
-                            edge_label::Bool=false,
+                            label_nodes::Bool=false,
+                            label_edges::Bool=false,
                             colors::Dict{String,Colors.Colorant}=Dict{String,Colors.Colorant}(),
                             edge_types::Array{String}=["branch", "dcline", "trans"],
                             gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
@@ -323,7 +323,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
                 status = Bool(get(line, "br_status", 1))
 
                 edge_membership = !fixed && status ? "closed switch" : !fixed && !status ? "open switch" : fixed && status ? "fixed closed switch" : "fixed open switch"
-                edge_props = Dict(:label => edge_label ? "$(line["index"])" : "",
+                edge_props = Dict(:label => label_edges ? "$(line["index"])" : "",
                                   :switch => true,
                                   :fixed => false,
                                   :i => line["index"],
@@ -383,7 +383,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
             is_energized = any(get(gen, get(keymap, "status", "gen_status"), 1) != 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) for (gen_type, keymap) in gen_types for gen in values(get(network, gen_type, Dict())) if gen["$(gen_type)_bus"] in actual_island)
 
             node_membership = has_load && is_energized ? "loaded enabled bus" : has_load && !is_energized ? "loaded disabled bus" : !has_load && is_energized ? "unloaded enabled bus" : "unloaded disabled bus"
-            node_props = Dict(:label => node_label ? "$node" : "",
+            node_props = Dict(:label => label_nodes ? "$node" : "",
                               :energized => is_energized,
                               :node_membership => node_membership,
                               :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
