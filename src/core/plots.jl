@@ -84,8 +84,8 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         positions::Union{Nothing,Array}=nothing,
                         scale_nodes::Array=[1, 2.5],
                         scale_edges::Array=[1, 2.5],
-                        fontsize_nodes::Float64=2,
-                        fontsize_edges::Float64=2,
+                        fontsize_nodes::Float64=2.0,
+                        fontsize_edges::Float64=2.0,
                         label_offset_edge::Array=[0,0])
 
     colors = merge(default_colors, colors)
