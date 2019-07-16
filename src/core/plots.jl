@@ -1,7 +1,8 @@
-default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"yellow",
+default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"gold",
                                               "closed switch" => colorant"green",
                                               "fixed open switch" => colorant"red",
                                               "fixed closed switch" => colorant"blue",
+                                              "transformer" => colorant"cyan",
                                               "enabled line" => colorant"black",
                                               "disabled line" => colorant"orange",
                                               "energized bus" => colorant"green",
@@ -58,6 +59,16 @@ kwargs
         Only used if buscoords=true. Spring constant to be used to force-direct-layout buses with no buscoord field
     positions::Array{Float64, 2}
         Used to specify node locations of graph (avoids running layout algorithm every time)
+    scale_nodes::Array
+        Lower and Upper bound of size of nodes (Default: [1, 2.5])
+    scale_edges::Array
+        Lower and Upper bound of size of edges (Default: [1, 2.5])
+    fontsize_nodes::Float64
+        Fontsize of node labels (Default: 2)
+    fontsize_edges::Float64
+        Fontsize of edge labels (Default: 2)
+    label_offset_edges::Array
+        Offset of edge labels [x, y] (Default: [0, 0])
 """
 function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         label_nodes::Bool=false,
@@ -71,8 +82,11 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         buscoords::Bool=false,
                         spring_const::Float64=1e-3,
                         positions::Union{Nothing,Array}=nothing,
-                        node_size_limits=[1, 2.5],
-                        fontsize=12)
+                        scale_nodes::Array=[1, 2.5],
+                        scale_edges::Array=[1, 2.5],
+                        fontsize_nodes::Float64=2,
+                        fontsize_edges::Float64=2,
+                        label_offset_edge::Array=[0,0])
 
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
@@ -98,7 +112,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
             fixed = get(edge, "fixed", false)
             status = Bool(get(edge, "br_status", 1))
 
-            edge_membership = switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line"
+            edge_membership = get(edge, "transformer", false) || edge_type == "trans" ? "transformer" : switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line"
             props = Dict(:i => edge["index"],
                         :switch => switch,
                         :status => status,
@@ -140,7 +154,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
         if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
                 amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
             for (node, value) in active_powers
-                MetaGraphs.set_prop!(graph, node, :node_size, (value - amin) / (amax - amin) * (node_size_limits[2] - node_size_limits[1]) + node_size_limits[1])
+                MetaGraphs.set_prop!(graph, node, :node_size, (value - amin) / (amax - amin) * (scale_nodes[2] - scale_nodes[1]) + scale_nodes[1])
             end
         end
     end
@@ -190,12 +204,12 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
 
     # Collect Node properties (color fill, sizes, labels)
     node_fills = [MetaGraphs.get_prop(graph, node, :node_color) for node in MetaGraphs.vertices(graph)]
-    node_sizes = [MetaGraphs.has_prop(graph, bus, :node_size) ? sum(MetaGraphs.get_prop(graph, bus, :node_size)) : node_size_limits[1] for bus in MetaGraphs.vertices(graph)]
+    node_sizes = [MetaGraphs.has_prop(graph, bus, :node_size) ? sum(MetaGraphs.get_prop(graph, bus, :node_size)) : scale_nodes[1] for bus in MetaGraphs.vertices(graph)]
     node_labels = [MetaGraphs.has_prop(graph, node, :label) ? MetaGraphs.get_prop(graph, node, :label) : "" for node in MetaGraphs.vertices(graph)]
 
     # Collect Edge properties (stroke color, edge weights, labels)
     edge_strokes = [MetaGraphs.get_prop(graph, edge, :edge_color) for edge in MetaGraphs.edges(graph)]
-    edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? 1.0 : 0.25 for edge in MetaGraphs.edges(graph)]
+    edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? scale_edges[2] : scale_edges[1] for edge in MetaGraphs.edges(graph)]
     edge_labels = [MetaGraphs.get_prop(graph, edge, :label) for edge in MetaGraphs.edges(graph)]
 
     # Graph Layout
@@ -235,7 +249,8 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     # Plot
     Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
                                             edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
-                                            nodefillc=node_fills, EDGELABELSIZE=4, edgelabeldistx=0.6, edgelabeldisty=0.6))
+                                            nodefillc=node_fills, NODELABELSIZE=fontsize_nodes, EDGELABELSIZE=fontsize_edges,
+                                            edgelabeldistx=label_offset_edge[1], edgelabeldisty=label_offset_edge[2]))
 
     # Return graph, positions
     return graph, [loc_x, loc_y]
