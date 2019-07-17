@@ -63,9 +63,9 @@ kwargs
         Lower and Upper bound of size of nodes (Default: [1, 2.5])
     scale_edges::Array
         Lower and Upper bound of size of edges (Default: [1, 2.5])
-    fontsize_nodes::Float64
+    fontsize_nodes::Real
         Fontsize of node labels (Default: 2)
-    fontsize_edges::Float64
+    fontsize_edges::Real
         Fontsize of edge labels (Default: 2)
     label_offset_edges::Array
         Offset of edge labels [x, y] (Default: [0, 0])
@@ -84,9 +84,10 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         positions::Union{Nothing,Array}=nothing,
                         scale_nodes::Array=[1, 2.5],
                         scale_edges::Array=[1, 2.5],
-                        fontsize_nodes::Float64=2.0,
-                        fontsize_edges::Float64=2.0,
-                        label_offset_edge::Array=[0,0])
+                        fontsize_nodes::Real=2.0,
+                        fontsize_edges::Real=2.0,
+                        label_offset_edge::Array=[0,0],
+                        apply_spring_layout::Bool=false)
 
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
@@ -240,9 +241,19 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                     pos[v] = [avg_x+std_x*rand(), avg_y+std_y*rand()]
                 end
             end
-            loc_x, loc_y = spring_layout(graph; pos=pos, fixed=fixed, k=spring_const*minimum(std([p for p in values(pos)])), iterations=100)
+            positions = spring_layout(graph; pos=pos, fixed=fixed, k=spring_const*minimum(std([p for p in values(pos)])), iterations=100)
+            loc_x = [-positions[n][2] for n in 1:length(positions)]
+            loc_y = [ positions[n][1] for n in 1:length(positions)]
         else
-            loc_x, loc_y = kamada_kawai_layout(graph)
+            positions = kamada_kawai_layout(graph)
+            if apply_spring_layout
+                positions = spring_layout(graph; pos=positions, k=spring_const*minimum(std([p for p in values(positions)])), iterations=100)
+                loc_x = [-positions[n][2] for n in 1:length(positions)]
+                loc_y = [ positions[n][1] for n in 1:length(positions)]
+            else
+                loc_x = [-positions[n][2] for n in 1:length(positions)]
+                loc_y = [ positions[n][1] for n in 1:length(positions)]
+            end
         end
     end
 
@@ -426,7 +437,9 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
     if positions != nothing
         loc_x, loc_y = positions
     else
-        loc_x, loc_y = kamada_kawai_layout(graph)
+        positions = kamada_kawai_layout(graph)
+        loc_x = [-positions[n][2] for n in 1:length(positions)]
+        loc_y = [ positions[n][1] for n in 1:length(positions)]
     end
 
     # Plot
