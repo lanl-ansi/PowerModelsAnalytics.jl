@@ -6,7 +6,6 @@ module PowerModelsAnalytics
     import Memento
 
     import LightGraphs
-    import MetaGraphs
     import GraphPlot
 
     import Colors

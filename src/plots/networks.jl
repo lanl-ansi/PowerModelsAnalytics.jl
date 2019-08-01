@@ -83,7 +83,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     n_buses = length(connected_buses)
     n_gens = length(gens)
 
-    graph = MetaGraphs.MetaGraph(n_buses + n_gens)
+    graph = PowerModelsSimpleGraph(n_buses + n_gens)
     bus_graph_map = Dict(bus["bus_i"] => i for (i, bus) in enumerate(values(get(network, "bus", Dict()))))
     gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_buses+1:n_buses+n_gens, gens))
 
@@ -93,7 +93,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
 
     for edge_type in edge_types
         for edge in values(get(network, edge_type, Dict()))
-            MetaGraphs.add_edge!(graph, bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]])
+            add_edge!(graph, bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]])
 
             switch = get(edge, switch, false)
             fixed = get(edge, "fixed", false)
@@ -107,14 +107,14 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                         :label => label_edges ? edge["index"] : "",
                         :edge_membership => edge_membership,
                         :edge_color => colors[edge_membership])
-            MetaGraphs.set_props!(graph, MetaGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
+            set_properties!(graph, LightGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
         end
     end
 
     # Add Generator Nodes
     for (gen_type, keymap) in gen_types
         for gen in values(get(network, gen_type, Dict()))
-            MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
+            add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
             is_condenser = all(get(gen, get(keymap, "active_max", "pmax"), 0.0) .== 0) && all(get(gen, get(keymap, "active_min", "pmin"), 0.0) .== 0)
             node_membership = get(gen, get(keymap, "status", "gen_status"), 1) == 0 ? "disabled generator" : any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, get(keymap, "active", "pg"), 0.0) .== 0) && any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
             label = gen_type == "storage" ? "S" : is_condenser ? "C" : "~"
@@ -124,24 +124,24 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                               :reactive_power => _convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
                               :node_membership => node_membership,
                               :node_color => colors[node_membership])
-            MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
+            set_properties!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
 
             edge_props = Dict(:label => "",
                               :switch => false,
                               :edge_membership => "connector",
                               :edge_color => colors["connector"])
-            MetaGraphs.set_props!(graph, MetaGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]]), edge_props)
+            set_properties!(graph, LightGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]]), edge_props)
         end
 
         # Normalize sizes of generator nodes by served total (active and reactive) power
-        active_powers = [(node, MetaGraphs.get_prop(graph, node, :active_power)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :active_power)]
-        reactive_powers = [(node, MetaGraphs.get_prop(graph, node, :reactive_power)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :reactive_power)]
+        active_powers = [(node, get_property(graph, node, :active_power, 0.0)) for node in vertices(graph) if hasprop(graph, node, :active_power)]
+        reactive_powers = [(node, get_property(graph, node, :reactive_power, 0.0)) for node in vertices(graph) if hasprop(graph, node, :reactive_power)]
         pmin, pmax = length(active_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0, length(active_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0
         qmin, qmax = length(reactive_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0, length(reactive_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0
         if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
                 amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
             for (node, value) in active_powers
-                MetaGraphs.set_prop!(graph, node, :node_size, (value - amin) / (amax - amin) * (scale_nodes[2] - scale_nodes[1]) + scale_nodes[1])
+                set_property!(graph, node, :node_size, (value - amin) / (amax - amin) * (scale_nodes[2] - scale_nodes[1]) + scale_nodes[1])
             end
         end
     end
@@ -157,7 +157,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
                                 :energized => is_energized,
                                 :node_membership => node_membership,
                                 :node_color => colors[node_membership])
-                MetaGraphs.set_props!(graph, bus_graph_map[bus], node_props)
+                set_properties!(graph, bus_graph_map[bus], node_props)
             end
         end
     end
@@ -166,7 +166,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     for bus in values(get(network, "bus", Dict()))
         loads = [load for load in values(get(network, "load", Dict())) if load["load_bus"] == bus["bus_i"]]
         load_status = length(loads) > 0 ? trunc(Int, round(sum(mean(get(load, "status", 1.0) for load in loads) * 10))) + 1 : 1
-        energized = MetaGraphs.has_prop(graph, bus_graph_map[bus["bus_i"]], :energized) ? MetaGraphs.get_prop(graph, bus_graph_map[bus["bus_i"]], :energized) : false
+        energized = get_property(graph, bus_graph_map[bus["bus_i"]], :energized, false)
         node_membership = "unloaded disabled bus"
         if any(any(load["pd"] .> 0) for load in loads) || any(any(load["qd"] .> 0) for load in loads)
             if get(bus, "bus_type", 1) == 4 || !energized
@@ -181,23 +181,23 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
         end
         node_props = Dict(:node_membership => node_membership,
                           :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
-        MetaGraphs.set_props!(graph, bus_graph_map[bus["bus_i"]], node_props)
+        set_properties!(graph, bus_graph_map[bus["bus_i"]], node_props)
     end
 
     # Debug
-    for node in MetaGraphs.vertices(graph)
-        @debug node MetaGraphs.props(graph, node)
+    for node in vertices(graph)
+        @debug node properties(graph, node)
     end
 
     # Collect Node properties (color fill, sizes, labels)
-    node_fills = [MetaGraphs.get_prop(graph, node, :node_color) for node in MetaGraphs.vertices(graph)]
-    node_sizes = [MetaGraphs.has_prop(graph, bus, :node_size) ? sum(MetaGraphs.get_prop(graph, bus, :node_size)) : scale_nodes[1] for bus in MetaGraphs.vertices(graph)]
-    node_labels = [MetaGraphs.has_prop(graph, node, :label) ? MetaGraphs.get_prop(graph, node, :label) : "" for node in MetaGraphs.vertices(graph)]
+    node_fills = [get_property(graph, node, :node_color, colorant"black") for node in vertices(graph)]
+    node_sizes = [sum(get_property(graph, bus, :node_size, scale_nodes[1])) for bus in vertices(graph)]
+    node_labels = [get_property(graph, node, :label, "") for node in vertices(graph)]
 
     # Collect Edge properties (stroke color, edge weights, labels)
-    edge_strokes = [MetaGraphs.get_prop(graph, edge, :edge_color) for edge in MetaGraphs.edges(graph)]
-    edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? scale_edges[2] : scale_edges[1] for edge in MetaGraphs.edges(graph)]
-    edge_labels = [MetaGraphs.get_prop(graph, edge, :label) for edge in MetaGraphs.edges(graph)]
+    edge_strokes = [get_property(graph, edge, :edge_color, colorant"black") for edge in edges(graph)]
+    edge_weights = [get_property(graph, edge, :switch, false) ? scale_edges[2] : scale_edges[1] for edge in edges(graph)]
+    edge_labels = [get_property(graph, edge, :label, "") for edge in edges(graph)]
 
     # Graph Layout
     if positions != nothing
@@ -207,7 +207,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
         if buscoords
             pos = Dict()
             fixed = []
-            for n in MetaGraphs.vertices(graph)
+            for n in vertices(graph)
                 lookup = graph_map[n]
                 if isa(lookup, String)
                     gen_type, i = split(lookup, "_")
@@ -244,7 +244,7 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     end
 
     # Plot
-    Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
+    Compose.draw(backend, GraphPlot.gplot(graph.graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
                                             edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
                                             nodefillc=node_fills, NODELABELSIZE=fontsize_nodes, EDGELABELSIZE=fontsize_edges,
                                             edgelabeldistx=label_offset_edge[1], edgelabeldisty=label_offset_edge[2]))
@@ -320,7 +320,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
     gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_islands+1:n_islands+n_gens, gens))
 
     # Initialize MetaGraph
-    graph = MetaGraphs.MetaGraph(n_islands + n_gens)
+    graph = PowerModelsSimpleGraph(n_islands + n_gens)
 
     # Add edges (of types in edge_types)
     for edge_type in edge_types
@@ -329,7 +329,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
             t_island = bus_island_map[line["t_bus"]]
 
             if f_island != t_island
-                MetaGraphs.add_edge!(graph, f_island, t_island)
+                add_edge!(graph, f_island, t_island)
 
                 fixed = Bool(all(get(line, "fixed", false)))
                 status = Bool(get(line, "br_status", 1))
@@ -342,7 +342,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
                                   :edge_membership => edge_membership,
                                   :edge_color => colors[edge_membership])
 
-                MetaGraphs.set_props!(graph, MetaGraphs.Edge(f_island, t_island), edge_props)
+                set_properties!(graph, LightGraphs.Edge(f_island, t_island), edge_props)
             end
         end
     end
@@ -350,7 +350,7 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
     # Add Generators to graph
     for (gen_type, keymap) in gen_types
         for gen in values(get(network, gen_type, Dict()))
-            MetaGraphs.add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]])
+            add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]])
             is_condenser = all(get(gen, get(keymap, "active_max", "pmax"), 0.0) .== 0) && all(get(gen, get(keymap, "active_min", "pmin"), 0.0) .== 0)
             node_membership = get(gen, get(keymap, "status", "gen_status"), 1) == 0 ? "disabled generator" : any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, get(keymap, "active", "pg"), 0.0) .== 0) && any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
             label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
@@ -360,30 +360,30 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
                               :reactive_power => _convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
                               :node_membership => node_membership,
                               :node_color => colors[node_membership])
-            MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
+            set_properties!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
 
             edge_props = Dict(:label => "",
                               :switch => false,
                               :edge_membership => "connector",
                               :edge_color => colors["connector"])
-            MetaGraphs.set_props!(graph, MetaGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]]), edge_props)
+            set_properties!(graph, LightGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]]), edge_props)
         end
 
         # Normalize node size of generators based on total power served
-        active_powers = [(node, MetaGraphs.get_prop(graph, node, :active_power)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :active_power)]
-        reactive_powers = [(node, MetaGraphs.get_prop(graph, node, :reactive_power)) for node in MetaGraphs.vertices(graph) if MetaGraphs.has_prop(graph, node, :reative_power)]
+        active_powers = [(node, get_property(graph, node, :active_power, missing)) for node in vertices(graph) if hasprop(graph, node, :active_power)]
+        reactive_powers = [(node, get_property(graph, node, :reactive_power, missing)) for node in vertices(graph) if hasprop(graph, node, :reative_power)]
         pmin, pmax = length(active_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0, length(active_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0
         qmin, qmax = length(reactive_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0, length(reactive_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0
         if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
             amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
             for (node, value) in active_powers
-                MetaGraphs.set_prop!(graph, node, :node_size, (value - amin) / (amax - amin) * (2.0 - 1.0) + 1.0)
+                set_property!(graph, node, :node_size, (value - amin) / (amax - amin) * (2.0 - 1.0) + 1.0)
             end
         end
     end
 
     # Color nodes based on average load served
-    for node in MetaGraphs.vertices(graph)
+    for node in vertices(graph)
         if !(node in values(gen_graph_map))
             actual_island = connected_island_graph_map[node]
             possible_island = graph_island_map[node]
@@ -400,24 +400,24 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
                               :node_membership => node_membership,
                               :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
 
-            MetaGraphs.set_props!(graph, node, node_props)
+            set_properties!(graph, node, node_props)
         end
     end
 
     # Debugging
-    for node in MetaGraphs.vertices(graph)
-        @debug node MetaGraphs.props(graph, node)
+    for node in vertices(graph)
+        @debug node properties(graph, node)
     end
 
     # Collect Node properties (labels, sizes, colors)
-    node_labels = [MetaGraphs.get_prop(graph, node, :label) for node in MetaGraphs.vertices(graph)]
-    node_sizes = [MetaGraphs.has_prop(graph, node, :node_size) ? MetaGraphs.get_prop(graph, node, :node_size) : 1.0 for node in MetaGraphs.vertices(graph)]
-    node_fills = [MetaGraphs.get_prop(graph, node, :node_color) for node in MetaGraphs.vertices(graph)]
+    node_labels = [get_property(graph, node, :label, "") for node in vertices(graph)]
+    node_sizes = [get_property(graph, node, :node_size, 1.0) for node in vertices(graph)]
+    node_fills = [get_property(graph, node, :node_color, colorant"black") for node in vertices(graph)]
 
     # Collect Edge properties (labels, weights, colors)
-    edge_labels = [MetaGraphs.get_prop(graph, edge, :label) for edge in MetaGraphs.edges(graph)]
-    edge_weights = [MetaGraphs.get_prop(graph, edge, :switch) ? 1.0 : 0.25 for edge in MetaGraphs.edges(graph)]
-    edge_strokes = [MetaGraphs.get_prop(graph, edge, :edge_color) for edge in MetaGraphs.edges(graph)]
+    edge_labels = [get_property(graph, edge, :label, "") for edge in edges(graph)]
+    edge_weights = [get_property(graph, edge, :switch, false) ? 1.0 : 0.25 for edge in edges(graph)]
+    edge_strokes = [get_property(graph, edge, :edge_color, colorant"black") for edge in edges(graph)]
 
     # Graph Layout
     if positions != nothing

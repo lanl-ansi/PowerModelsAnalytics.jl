@@ -1,10 +1,10 @@
 "NetworkX Kamada-Kawai layout function"
-function kamada_kawai_layout(graph; dist=nothing, pos=nothing, weight="weight", scale=1.0, center=nothing, dim=2)
+function kamada_kawai_layout(graph::PowerModelsGraph{T}; dist=nothing, pos=nothing, weight="weight", scale=1.0, center=nothing, dim=2) where T <: LightGraphs.AbstractGraph
     G = nx.Graph()
-    for edge in MetaGraphs.edges(graph)
+    for edge in edges(graph)
         G.add_edge(edge.src, edge.dst)
     end
-    for node in MetaGraphs.vertices(graph)
+    for node in vertices(graph)
         G.add_node(node)
     end
 
@@ -15,13 +15,13 @@ end
 
 
 "NetworkX spring layout function"
-function spring_layout(graph; k=nothing, pos=nothing, fixed=nothing, iterations=50, threshold=0.0001, weight="weight", scale=1, center=nothing, dim=2, seed=nothing)
+function spring_layout(graph::PowerModelsGraph{T}; k=nothing, pos=nothing, fixed=nothing, iterations=50, threshold=0.0001, weight="weight", scale=1, center=nothing, dim=2, seed=nothing) where T <: LightGraphs.AbstractGraph
     G = nx.Graph()
-    for edge in MetaGraphs.edges(graph)
+    for edge in edges(graph)
         G.add_edge(edge.src, edge.dst)
     end
 
-    for node in MetaGraphs.vertices(graph)
+    for node in vertices(graph)
         G.add_node(node)
     end
 
