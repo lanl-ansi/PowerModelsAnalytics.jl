@@ -16,20 +16,6 @@ default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"gold",
                                               "loaded enabled bus" => colorant"green3",
                                               "connector" => colorant"lightgrey")
 
-"converts nan values to 0.0"
-convert_nan(x) = isnan(x) ? 0.0 : x
-
-
-""
-function plot_branch_impedance(data::Dict{String,Any})
-    r = [branch["br_r"] for (i,branch) in data["branch"]]
-    x = [branch["br_x"] for (i,branch) in data["branch"]]
-
-    s = Plots.scatter(r, x, xlabel="resistance (p.u.)", ylabel="reactance (p.u.)", label="")
-    r_h = Plots.histogram(r, xlabel="resistance (p.u.)", ylabel="branch count", label="", reuse=false)
-    x_h = Plots.histogram(x, xlabel="reactance (p.u.)", ylabel="branch count", label="", reuse=false)
-end
-
 
 """
     plot_network(network, backend; kwargs...)
@@ -134,8 +120,8 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
             label = gen_type == "storage" ? "S" : is_condenser ? "C" : "~"
             node_props = Dict(:label => label,
                               :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
-                              :active_power => convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
-                              :reactive_power => convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
+                              :active_power => _convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
+                              :reactive_power => _convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
                               :node_membership => node_membership,
                               :node_color => colors[node_membership])
             MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
@@ -370,8 +356,8 @@ function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
             label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
             node_props = Dict(:label => label,
                               :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
-                              :active_power => convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
-                              :reactive_power => convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
+                              :active_power => _convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
+                              :reactive_power => _convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
                               :node_membership => node_membership,
                               :node_color => colors[node_membership])
             MetaGraphs.set_props!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)

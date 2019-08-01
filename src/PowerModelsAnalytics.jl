@@ -5,6 +5,7 @@ module PowerModelsAnalytics
     import Plots
     import Memento
 
+    import LightGraphs
     import MetaGraphs
     import GraphPlot
 
@@ -33,14 +34,20 @@ module PowerModelsAnalytics
         copy!(scipy, PyCall.pyimport_conda("scipy", "scipy"))
     end
 
-    include("core/layouts.jl")
+    include("core/types.jl")  # must be first to properly define new types
+
+    include("core/data.jl")
     include("core/parameters.jl")
-    include("core/plots.jl")
 
     include("graph/metrics.jl")
 
-    include("core/export.jl")
+    include("layouts/networkx.jl")
 
+    include("plots/graph.jl")
+    include("plots/analytics.jl")
+    include("plots/networks.jl")
+
+    include("core/export.jl")  # must be last to properly export all functions
 end
 
 
