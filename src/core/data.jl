@@ -16,7 +16,7 @@ end
 ""
 function set_property!(graph::PowerModelsGraph{T}, obj::Union{Int,LightGraphs.AbstractEdge}, key::Symbol, property::Any) where T <: LightGraphs.AbstractGraph
     if !haskey(graph.metadata, obj)
-        graph.metadata[obj] = Dict{Symbol,<:Any}()
+        graph.metadata[obj] = Dict{Symbol,Any}()
     end
 
     graph.metadata[obj][key] = property

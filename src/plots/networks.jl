@@ -1,22 +1,3 @@
-default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"gold",
-                                              "closed switch" => colorant"green",
-                                              "fixed open switch" => colorant"red",
-                                              "fixed closed switch" => colorant"blue",
-                                              "transformer" => colorant"cyan",
-                                              "enabled line" => colorant"black",
-                                              "disabled line" => colorant"orange",
-                                              "energized bus" => colorant"green",
-                                              "energized generator" => colorant"cyan",
-                                              "energized synchronous condenser" => colorant"yellow",
-                                              "enabled generator" => colorant"orange",
-                                              "disabled generator" => colorant"red",
-                                              "unloaded enabled bus" => colorant"darkgrey",
-                                              "unloaded disabled bus" => colorant"grey95",
-                                              "loaded disabled bus" => colorant"gold",
-                                              "loaded enabled bus" => colorant"green3",
-                                              "connector" => colorant"lightgrey")
-
-
 """
     plot_network(network, backend; kwargs...)
 
@@ -56,133 +37,22 @@ kwargs
     label_offset_edges::Array
         Offset of edge labels [x, y] (Default: [0, 0])
 """
-function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
+function plot_network(graph::PowerModelsGraph{T}; filename::Union{Nothing,String}=nothing,
                         label_nodes::Bool=false,
                         label_edges::Bool=false,
                         colors::Dict=Dict(),
-                        edge_types::Array{String}=["branch", "dcline", "trans"],
-                        gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
-                                                                         "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
-                        exclude_gens::Union{Nothing,Array{String}}=nothing,
-                        switch::String="switchable",
-                        buscoords::Bool=false,
+                        use_buscoords::Bool=false,
                         spring_const::Float64=1e-3,
                         positions::Union{Nothing,Array}=nothing,
-                        scale_nodes::Array=[1, 2.5],
+                        scale_nodes::Array=[10, 25],
                         scale_edges::Array=[1, 2.5],
-                        fontsize_nodes::Real=2.0,
-                        fontsize_edges::Real=2.0,
-                        label_offset_edge::Array=[0,0],
-                        apply_spring_layout::Bool=false)
+                        fontsize::Real=12,
+                        apply_spring_layout::Bool=false) where T <: LightGraphs.AbstractGraph
 
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
 
-    connected_buses = Set(edge[k] for k in ["f_bus", "t_bus"] for edge_type in edge_types for edge in values(get(network, edge_type, Dict())))
-    gens = [(gen_type, gen) for gen_type in keys(gen_types) for gen in values(get(network, gen_type, Dict()))]
-    n_buses = length(connected_buses)
-    n_gens = length(gens)
-
-    graph = PowerModelsSimpleGraph(n_buses + n_gens)
-    bus_graph_map = Dict(bus["bus_i"] => i for (i, bus) in enumerate(values(get(network, "bus", Dict()))))
-    gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_buses+1:n_buses+n_gens, gens))
-
-    graph_bus_map = Dict(v => k for (k, v) in bus_graph_map)
-    graph_gen_map = Dict(v => k for (k, v) in gen_graph_map)
-    graph_map = merge(graph_bus_map, graph_gen_map)
-
-    for edge_type in edge_types
-        for edge in values(get(network, edge_type, Dict()))
-            add_edge!(graph, bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]])
-
-            switch = get(edge, switch, false)
-            fixed = get(edge, "fixed", false)
-            status = Bool(get(edge, "br_status", 1))
-
-            edge_membership = get(edge, "transformer", false) || edge_type == "trans" ? "transformer" : switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line"
-            props = Dict(:i => edge["index"],
-                        :switch => switch,
-                        :status => status,
-                        :fixed => fixed,
-                        :label => label_edges ? edge["index"] : "",
-                        :edge_membership => edge_membership,
-                        :edge_color => colors[edge_membership])
-            set_properties!(graph, LightGraphs.Edge(bus_graph_map[edge["f_bus"]], bus_graph_map[edge["t_bus"]]), props)
-        end
-    end
-
-    # Add Generator Nodes
-    for (gen_type, keymap) in gen_types
-        for gen in values(get(network, gen_type, Dict()))
-            add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]])
-            is_condenser = all(get(gen, get(keymap, "active_max", "pmax"), 0.0) .== 0) && all(get(gen, get(keymap, "active_min", "pmin"), 0.0) .== 0)
-            node_membership = get(gen, get(keymap, "status", "gen_status"), 1) == 0 ? "disabled generator" : any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, get(keymap, "active", "pg"), 0.0) .== 0) && any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
-            label = gen_type == "storage" ? "S" : is_condenser ? "C" : "~"
-            node_props = Dict(:label => label,
-                              :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
-                              :active_power => _convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
-                              :reactive_power => _convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
-                              :node_membership => node_membership,
-                              :node_color => colors[node_membership])
-            set_properties!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
-
-            edge_props = Dict(:label => "",
-                              :switch => false,
-                              :edge_membership => "connector",
-                              :edge_color => colors["connector"])
-            set_properties!(graph, LightGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_graph_map[gen["$(gen_type)_bus"]]), edge_props)
-        end
-
-        # Normalize sizes of generator nodes by served total (active and reactive) power
-        active_powers = [(node, get_property(graph, node, :active_power, 0.0)) for node in vertices(graph) if hasprop(graph, node, :active_power)]
-        reactive_powers = [(node, get_property(graph, node, :reactive_power, 0.0)) for node in vertices(graph) if hasprop(graph, node, :reactive_power)]
-        pmin, pmax = length(active_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0, length(active_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0
-        qmin, qmax = length(reactive_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0, length(reactive_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0
-        if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
-                amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
-            for (node, value) in active_powers
-                set_property!(graph, node, :node_size, (value - amin) / (amax - amin) * (scale_nodes[2] - scale_nodes[1]) + scale_nodes[1])
-            end
-        end
-    end
-
-    # Check status of buses in islands (energized?)
-    islands = PowerModels.calc_connected_components(network; edges=edge_types)
-    for island in islands
-        is_energized = any(get(gen, get(keymap, "status", "gen_status"), 1.0) != 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) for (gen_type, keymap) in gen_types for gen in values(get(network, gen_type, Dict())) if gen["$(gen_type)_bus"] in island)
-        for bus in island
-            if bus in connected_buses
-                node_membership = get(get(get(network, "bus", Dict()), "$bus", Dict()), "bus_type", 1) == 4 ? "unloaded disabled bus" : "unloaded enabled bus"
-                node_props = Dict(:label => label_nodes ? "$bus" : "",
-                                :energized => is_energized,
-                                :node_membership => node_membership,
-                                :node_color => colors[node_membership])
-                set_properties!(graph, bus_graph_map[bus], node_props)
-            end
-        end
-    end
-
-    # Set color of buses based on mean served load
-    for bus in values(get(network, "bus", Dict()))
-        loads = [load for load in values(get(network, "load", Dict())) if load["load_bus"] == bus["bus_i"]]
-        load_status = length(loads) > 0 ? trunc(Int, round(sum(mean(get(load, "status", 1.0) for load in loads) * 10))) + 1 : 1
-        energized = get_property(graph, bus_graph_map[bus["bus_i"]], :energized, false)
-        node_membership = "unloaded disabled bus"
-        if any(any(load["pd"] .> 0) for load in loads) || any(any(load["qd"] .> 0) for load in loads)
-            if get(bus, "bus_type", 1) == 4 || !energized
-                node_membership = "loaded disabled bus"
-            elseif get(bus, "bus_type", 1) != 4 && energized
-                node_membership = "loaded enabled bus"
-            end
-        else
-            if energized && get(bus, "bus_type", 1) != 4
-                node_membership = "unloaded enabled bus"
-            end
-        end
-        node_props = Dict(:node_membership => node_membership,
-                          :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
-        set_properties!(graph, bus_graph_map[bus["bus_i"]], node_props)
-    end
+    apply_plot_network_metadata!(graph, colors, load_color_range, scale_nodes, scale_edges)
 
     # Debug
     for node in vertices(graph)
@@ -192,65 +62,49 @@ function plot_network(network::Dict{String,Any}, backend::Compose.Backend;
     # Collect Node properties (color fill, sizes, labels)
     node_fills = [get_property(graph, node, :node_color, colorant"black") for node in vertices(graph)]
     node_sizes = [sum(get_property(graph, bus, :node_size, scale_nodes[1])) for bus in vertices(graph)]
-    node_labels = [get_property(graph, node, :label, "") for node in vertices(graph)]
+    node_labels = [label_nodes ? get_property(graph, node, :label, "") : "" for node in vertices(graph)]
 
     # Collect Edge properties (stroke color, edge weights, labels)
     edge_strokes = [get_property(graph, edge, :edge_color, colorant"black") for edge in edges(graph)]
-    edge_weights = [get_property(graph, edge, :switch, false) ? scale_edges[2] : scale_edges[1] for edge in edges(graph)]
-    edge_labels = [get_property(graph, edge, :label, "") for edge in edges(graph)]
+    edge_weights = [get_property(graph, edge, :edge_size, 1) for edge in edges(graph)]
+    edge_labels = [label_edges ? get_property(graph, edge, :label, "") : "" for edge in edges(graph)]
 
     # Graph Layout
-    if positions != nothing
-        loc_x, loc_y = positions
-    else
-        # Use buscoords?
-        if buscoords
-            pos = Dict()
-            fixed = []
-            for n in vertices(graph)
-                lookup = graph_map[n]
-                if isa(lookup, String)
-                    gen_type, i = split(lookup, "_")
-                    gen_bus = network[gen_type][i]["$(gen_type)_bus"]
-                    pos[n] = get(network["bus"]["$gen_bus"], "buscoord", missing)
-                else
-                    pos[n] = get(network["bus"]["$lookup"], "buscoord", missing)
-                    if haskey(network["bus"]["$lookup"], "buscoord")
-                        push!(fixed, n)
-                    end
-                end
-            end
-            avg_x, avg_y = mean(hcat(skipmissing([v for v in values(pos)])...), dims=2)
-            std_x, std_y = std(hcat(skipmissing([v for v in values(pos)])...), dims=2)
-            for (v, p) in pos
-                if ismissing(p)
-                    pos[v] = [avg_x+std_x*rand(), avg_y+std_y*rand()]
-                end
-            end
-            positions = spring_layout(graph; pos=pos, fixed=fixed, k=spring_const*minimum(std([p for p in values(pos)])), iterations=100)
-            loc_x = [-positions[n][2] for n in 1:length(positions)]
-            loc_y = [ positions[n][1] for n in 1:length(positions)]
-        else
-            positions = kamada_kawai_layout(graph)
-            if apply_spring_layout
-                positions = spring_layout(graph; pos=positions, k=spring_const*minimum(std([p for p in values(positions)])), iterations=100)
-                loc_x = [-positions[n][2] for n in 1:length(positions)]
-                loc_y = [ positions[n][1] for n in 1:length(positions)]
-            else
-                loc_x = [-positions[n][2] for n in 1:length(positions)]
-                loc_y = [ positions[n][1] for n in 1:length(positions)]
-            end
-        end
+    if !all(hasprop(graph, node, :x) && hasprop(graph, node, :y) for node in vertices(graph))
+        layout_graph!(graph, kamada_kawai_layout; use_buscoords=use_buscoords, apply_spring_layout=apply_spring_layout, spring_const=spring_const)
     end
 
     # Plot
-    Compose.draw(backend, GraphPlot.gplot(graph.graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
-                                            edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
-                                            nodefillc=node_fills, NODELABELSIZE=fontsize_nodes, EDGELABELSIZE=fontsize_edges,
-                                            edgelabeldistx=label_offset_edge[1], edgelabeldisty=label_offset_edge[2]))
+    fig = plot_graph(graph; label_nodes=label_nodes, label_edges=label_edges, fontsize=fontsize)
 
-    # Return graph, positions
-    return graph, [loc_x, loc_y]
+    if !isnothing(filename)
+        Plots.savefig(fig, filename)
+    end
+
+    return graph
+end
+
+
+function plot_network(case::Dict{String,Any};
+                      edge_types::Array{String}=["branch", "dcline", "trans"],
+                      gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
+                                                                       "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
+                      exclude_gens::Union{Nothing,Array{String}}=nothing,
+                      switch::String="switchable",
+                      positions::Union{Dict,PowerModelsGraph}=Dict(),
+                      kwargs...)
+    graph = build_graph_network(case; edge_types=edge_types, gen_types=gen_types, exclude_gens=exclude_gens, switch=switch)
+
+    if isa(positions, PowerModelsGraph)
+        positions = Dict(node => [get_property(positions, node, :x, 0.0), get_property(positions, node, :y, 0.0)] for node in vertices(positions))
+    end
+
+    for (node, (x, y)) in positions
+        set_properties!(graph, node, Dict(:x=>x, :y=>y))
+    end
+
+    graph = plot_network(graph; kwargs...)
+    return graph
 end
 
 
@@ -279,160 +133,58 @@ kwargs
     positions::Array{Float64, 2}
         Used to specify node locations of graph (avoids running layout algorithm every time)
 """
-function plot_load_blocks(network::Dict{String,Any}, backend::Compose.Backend;
+function plot_load_blocks(graph::PowerModelsGraph{T};
+                            filename::String,
                             label_nodes::Bool=false,
                             label_edges::Bool=false,
+                            fontsize::Real=12,
                             colors::Dict{String,Colors.Colorant}=Dict{String,Colors.Colorant}(),
-                            edge_types::Array{String}=["branch", "dcline", "trans"],
-                            gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
-                                                                             "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
-                            exclude_gens::Union{Nothing,Array{String}}=nothing,
-                            switch::String="switchable",
-                            positions::Union{Nothing,Array}=nothing)
+                            apply_spring_layout::Bool=false,
+                            spring_const::Float64=1e-3,
+                            scale_nodes::Array=[10, 25],
+                            scale_edges::Array=[1, 2.5]) where T <: LightGraphs.AbstractGraph
 
     # Setup Colors
     colors = merge(default_colors, colors)
     load_color_range = Colors.range(colors["loaded disabled bus"], colors["loaded enabled bus"], length=11)
 
-    # Create copy of network to determine possible islands
-     _network = deepcopy(network)
-     for edge_type in edge_types
-        for edge in values(get(_network, edge_type, Dict()))
-            if get(edge, switch, false)
-                edge["br_status"] = 0
-            end
-        end
-    end
-
-    # Build graph maps
-    islands = PowerModels.calc_connected_components(_network, edges=edge_types)  # Possible Islands
-    connected_islands = PowerModels.calc_connected_components(network, edges=edge_types)  # Actual Islands
-    n_islands = length(islands)
-
-    island_graph_map = Dict(island => i for (i, island) in enumerate(islands))
-    graph_island_map = Dict(i => island for (island, i) in island_graph_map)
-    connected_island_graph_map = Dict(i => connected_island for (island, i) in island_graph_map for bus in island for connected_island in connected_islands if bus in connected_island)
-    bus_island_map = Dict(bus => i for (island, i) in island_graph_map for bus in island)
-
-    gens = [(gen_type, gen) for gen_type in keys(gen_types) for gen in values(get(network, gen_type, Dict()))]
-    n_gens = length(gens)
-
-    gen_graph_map = Dict("$(gen_type)_$(gen["index"])" => i for (i, (gen_type, gen)) in zip(n_islands+1:n_islands+n_gens, gens))
-
-    # Initialize MetaGraph
-    graph = PowerModelsSimpleGraph(n_islands + n_gens)
-
-    # Add edges (of types in edge_types)
-    for edge_type in edge_types
-        for line in values(get(network, edge_type, Dict()))
-            f_island = bus_island_map[line["f_bus"]]
-            t_island = bus_island_map[line["t_bus"]]
-
-            if f_island != t_island
-                add_edge!(graph, f_island, t_island)
-
-                fixed = Bool(all(get(line, "fixed", false)))
-                status = Bool(get(line, "br_status", 1))
-
-                edge_membership = !fixed && status ? "closed switch" : !fixed && !status ? "open switch" : fixed && status ? "fixed closed switch" : "fixed open switch"
-                edge_props = Dict(:label => label_edges ? "$(line["index"])" : "",
-                                  :switch => true,
-                                  :fixed => false,
-                                  :i => line["index"],
-                                  :edge_membership => edge_membership,
-                                  :edge_color => colors[edge_membership])
-
-                set_properties!(graph, LightGraphs.Edge(f_island, t_island), edge_props)
-            end
-        end
-    end
-
-    # Add Generators to graph
-    for (gen_type, keymap) in gen_types
-        for gen in values(get(network, gen_type, Dict()))
-            add_edge!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]])
-            is_condenser = all(get(gen, get(keymap, "active_max", "pmax"), 0.0) .== 0) && all(get(gen, get(keymap, "active_min", "pmin"), 0.0) .== 0)
-            node_membership = get(gen, get(keymap, "status", "gen_status"), 1) == 0 ? "disabled generator" : any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) ? "energized generator" : is_condenser || (all(get(gen, get(keymap, "active", "pg"), 0.0) .== 0) && any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? "energized synchronous condenser" : "enabled generator"
-            label = gen_type == "storage" ? "S" : occursin("condenser", node_membership) ? "C" : "~"
-            node_props = Dict(:label => label,
-                              :energized => get(gen, get(keymap, "status", "gen_status"), 1) > 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) ? true : false,
-                              :active_power => _convert_nan(sum(get(gen, get(keymap, "active", "pg"), 0.0))),
-                              :reactive_power => _convert_nan(sum(get(gen, get(keymap, "reactive", "qg"), 0.0))),
-                              :node_membership => node_membership,
-                              :node_color => colors[node_membership])
-            set_properties!(graph, gen_graph_map["$(gen_type)_$(gen["index"])"], node_props)
-
-            edge_props = Dict(:label => "",
-                              :switch => false,
-                              :edge_membership => "connector",
-                              :edge_color => colors["connector"])
-            set_properties!(graph, LightGraphs.Edge(gen_graph_map["$(gen_type)_$(gen["index"])"], bus_island_map[gen["$(gen_type)_bus"]]), edge_props)
-        end
-
-        # Normalize node size of generators based on total power served
-        active_powers = [(node, get_property(graph, node, :active_power, missing)) for node in vertices(graph) if hasprop(graph, node, :active_power)]
-        reactive_powers = [(node, get_property(graph, node, :reactive_power, missing)) for node in vertices(graph) if hasprop(graph, node, :reative_power)]
-        pmin, pmax = length(active_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0, length(active_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0
-        qmin, qmax = length(reactive_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0, length(reactive_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0
-        if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
-            amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
-            for (node, value) in active_powers
-                set_property!(graph, node, :node_size, (value - amin) / (amax - amin) * (2.0 - 1.0) + 1.0)
-            end
-        end
-    end
-
-    # Color nodes based on average load served
-    for node in vertices(graph)
-        if !(node in values(gen_graph_map))
-            actual_island = connected_island_graph_map[node]
-            possible_island = graph_island_map[node]
-
-            loads = [load for load in values(get(network, "load", Dict())) if load["load_bus"] in possible_island]
-            load_status = length(loads) > 0 ? trunc(Int, round(sum(mean(get(load, "status", 1.0) for load in loads) * 10))) + 1 : 1
-
-            has_load = length([load for load in loads if get(load, "status", 1.0) > 0]) > 0
-            is_energized = any(get(gen, get(keymap, "status", "gen_status"), 1) != 0 && (any(get(gen, get(keymap, "active", "pg"), 0.0) .> 0) || any(get(gen, get(keymap, "reactive", "qg"), 0.0) .> 0)) for (gen_type, keymap) in gen_types for gen in values(get(network, gen_type, Dict())) if gen["$(gen_type)_bus"] in actual_island)
-
-            node_membership = has_load && is_energized ? "loaded enabled bus" : has_load && !is_energized ? "loaded disabled bus" : !has_load && is_energized ? "unloaded enabled bus" : "unloaded disabled bus"
-            node_props = Dict(:label => label_nodes ? "$node" : "",
-                              :energized => is_energized,
-                              :node_membership => node_membership,
-                              :node_color => occursin("disabled", node_membership) || occursin("unloaded", node_membership) ? colors[node_membership] : load_color_range[load_status])
-
-            set_properties!(graph, node, node_props)
-        end
-    end
-
-    # Debugging
-    for node in vertices(graph)
-        @debug node properties(graph, node)
-    end
-
-    # Collect Node properties (labels, sizes, colors)
-    node_labels = [get_property(graph, node, :label, "") for node in vertices(graph)]
-    node_sizes = [get_property(graph, node, :node_size, 1.0) for node in vertices(graph)]
-    node_fills = [get_property(graph, node, :node_color, colorant"black") for node in vertices(graph)]
-
-    # Collect Edge properties (labels, weights, colors)
-    edge_labels = [get_property(graph, edge, :label, "") for edge in edges(graph)]
-    edge_weights = [get_property(graph, edge, :switch, false) ? 1.0 : 0.25 for edge in edges(graph)]
-    edge_strokes = [get_property(graph, edge, :edge_color, colorant"black") for edge in edges(graph)]
+    apply_plot_network_metadata!(graph, colors, load_color_range, scale_nodes, scale_edges)
 
     # Graph Layout
-    if positions != nothing
-        loc_x, loc_y = positions
-    else
-        positions = kamada_kawai_layout(graph)
-        loc_x = [-positions[n][2] for n in 1:length(positions)]
-        loc_y = [ positions[n][1] for n in 1:length(positions)]
+    if !all(hasprop(graph, node, :x) && hasprop(graph, node, :y) for node in vertices(graph))
+        layout_graph!(graph, kamada_kawai_layout; apply_spring_layout=apply_spring_layout, spring_const=spring_const)
     end
 
     # Plot
-    Compose.draw(backend, GraphPlot.gplot(graph, loc_x, loc_y, nodelabel=node_labels, edgelabel=edge_labels,
-                                          edgestrokec=edge_strokes, edgelinewidth=edge_weights, nodesize=node_sizes,
-                                          nodefillc=node_fills, EDGELABELSIZE=4, edgelabeldistx=0.6, edgelabeldisty=0.6))
+    fig = plot_graph(graph; label_nodes=label_nodes, label_edges=label_edges, fontsize=fontsize)
 
-    # Return Graph, Positions
-    return graph, [loc_x, loc_y]
+    if !isnothing(filename)
+        Plots.savefig(fig, filename)
+    end
+
+    return graph
+end
+
+
+function plot_load_blocks(case::Dict{String,Any};
+                          edge_types::Array{String}=["branch", "dcline", "trans"],
+                          gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
+                                                                           "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
+                          exclude_gens::Union{Nothing,Array{String}}=nothing,
+                          switch::String="switchable",
+                          positions::Union{Dict,PowerModelsGraph}=Dict(),
+                          kwargs...
+                         )
+    graph = build_graph_load_blocks(case; edge_types=edge_types, gen_types=gen_types, exclude_gens=exclude_gens, switch=switch)
+
+    if isa(positions, PowerModelsGraph)
+        positions = Dict(node => [get_property(positions, node, :x, 0.0), get_property(positions, node, :y, 0.0)] for node in vertices(positions))
+    end
+
+    for (node, (x, y)) in positions
+        set_properties!(graph, node, Dict(:x=>x, :y=>y))
+    end
+
+    graph = plot_load_blocks(graph; kwargs...)
+    return graph
 end

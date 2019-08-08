@@ -7,10 +7,10 @@ mutable struct PowerModelsGraph{T<:LightGraphs.AbstractGraph}
 end
 
 
-function PowerModelsSimpleGraph(vertices::Int)
-    graph = LightGraphs.SimpleGraph(vertices)
+function PowerModelsGraph(vertices::Int)
+    graph = LightGraphs.SimpleDiGraph(vertices)
 
     metadata = Dict{Union{Int,LightGraphs.AbstractEdge},Dict{Symbol,<:Any}}()
 
-    return PowerModelsGraph{LightGraphs.SimpleGraph}(graph, metadata)
+    return PowerModelsGraph{LightGraphs.SimpleDiGraph}(graph, metadata)
 end

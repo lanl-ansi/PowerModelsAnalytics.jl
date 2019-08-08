@@ -23,9 +23,9 @@ version = "0.5.6"
 
 [[CSTParser]]
 deps = ["Tokenize"]
-git-tree-sha1 = "0ff80f68f55fcde2ed98d7b24d7abaf20727f3f8"
+git-tree-sha1 = "c69698c3d4a7255bc1b4bc2afc09f59db910243b"
 uuid = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
-version = "0.6.1"
+version = "0.6.2"
 
 [[Calculus]]
 deps = ["Compat"]
@@ -82,9 +82,9 @@ uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.5.1"
 
 [[DataAPI]]
-git-tree-sha1 = "891a09f4f90361a28d0391c104a65c0202e22624"
+git-tree-sha1 = "8903f0219d3472543fc4b2f5ebaf675a07f817c0"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.0.0"
+version = "1.0.1"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections", "Random", "Serialization", "Test"]
@@ -144,12 +144,6 @@ deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "Static
 git-tree-sha1 = "2b0bfb379a54bdfcd2942f388f7d045f8952373d"
 uuid = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 version = "0.7.5"
-
-[[GraphPlot]]
-deps = ["ArnoldiMethod", "ColorTypes", "Colors", "Compose", "DelimitedFiles", "LightGraphs", "LinearAlgebra", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "f4435ce0055d4da938f3bab0c0e523826735c96a"
-uuid = "a2cc645c-3eea-5389-862e-a155d0052231"
-version = "0.3.1"
 
 [[Inflate]]
 deps = ["Pkg", "Printf", "Random", "Test"]

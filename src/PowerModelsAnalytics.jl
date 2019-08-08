@@ -37,9 +37,12 @@ module PowerModelsAnalytics
 
     include("core/data.jl")
     include("core/parameters.jl")
+    include("core/options.jl")
 
+    include("graph/common.jl")
     include("graph/metrics.jl")
 
+    include("layouts/common.jl")
     include("layouts/networkx.jl")
 
     include("plots/graph.jl")
