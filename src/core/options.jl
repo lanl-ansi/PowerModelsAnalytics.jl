@@ -1,3 +1,4 @@
+"Default plot colors, including all supported component variations"
 const default_colors = Dict{String,Colors.Colorant}("open switch" => colorant"gold",
                                                     "closed switch" => colorant"green",
                                                     "fixed open switch" => colorant"red",

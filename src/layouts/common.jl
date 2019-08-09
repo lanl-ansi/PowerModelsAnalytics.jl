@@ -1,8 +1,27 @@
-""
+"""
+    layout_graph!(graph, layout_engine; kwargs...)
+
+A routine to assign positions to all nodes of a `graph` for plotting using `layout_engine`.
+Positions are assigned to the metadata of each node at `:x` and `:y`.
+
+*Parameters*
+    graph::PowerModelsGraph
+    layout_engine
+        Layout Function to use. Applies only when not using `use_buscoords`.
+    use_buscoords::Bool
+        Optional. If true, `spring_layout` will be used instead of `layout_engine`. (Default: `false`)
+    apply_spring_layout::Bool
+        Optional. If true, `spring_layout` will be applied after `layout_engine` to ensure separation of overlapping nodes (Default: `false`)
+    spring_const::Float64
+        Optional. Spring constant to be used by `spring_layout`.
+    kwargs
+        Keyword arguments to be used in `layout_engine`.
+"""
 function layout_graph!(graph::PowerModelsGraph{T}, layout_engine=kamada_kawai_layout;
                        use_buscoords::Bool=false,
                        apply_spring_layout::Bool=false,
-                       spring_const::Float64=1e-3) where T <: LightGraphs.AbstractGraph
+                       spring_const::Float64=1e-3,
+                       kwargs...) where T <: LightGraphs.AbstractGraph
     if use_buscoords
         pos = Dict(node => get_property(graph, node, :buscoord, missing) for node in vertices(graph))
         fixed = [node for (node, p) in pos if !ismissing(p)]
@@ -16,7 +35,7 @@ function layout_graph!(graph::PowerModelsGraph{T}, layout_engine=kamada_kawai_la
         end
         positions = spring_layout(graph; pos=pos, fixed=fixed, k=spring_const*minimum(std([p for p in values(pos)])), iterations=100)
     else
-        positions = layout_engine(graph)
+        positions = layout_engine(graph; kwargs...)
         if apply_spring_layout
             positions = spring_layout(graph; pos=positions, k=spring_const*minimum(std([p for p in values(positions)])), iterations=100)
         end

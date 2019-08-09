@@ -30,7 +30,10 @@ Parameters
         Position of legend, accepts the following symbols: :right, :left, :top, :bottom, :inside,
         :best, :legend, :topright, :topleft, :bottomleft, :bottomright
 """
-function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{String,Any}; log::Bool=false, intermediate::Bool=false, legend_position::Symbol=:best)
+function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{String,Any};
+                           log::Bool=false,
+                           intermediate::Bool=false,
+                           legend_position::Symbol=:best)
     x = 0:length(result["nw"])-1
     generation = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(gen["pg"]))*result["baseMVA"] for (i, gen) in nw["gen"])) for (n, nw) in result["nw"]]; by=x->x[1])]
     storage = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(strg["ps"]))*result["baseMVA"] for (i, strg) in nw["storage"])) for (n, nw) in result["nw"]]; by=x->x[1])]

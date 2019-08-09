@@ -1,5 +1,42 @@
-""
-function plot_graph(graph::PowerModelsGraph{T}; label_nodes=false, label_edges=false, plot_size=(600,600), dpi=300, fontsize=12, fontcolor=:black, textalign=:center, fontfamily="Arial", kwargs...) where T <: LightGraphs.AbstractGraph
+"""
+    plot_graph(graph; kwargs...)
+
+Plots a graph. Returns `Plots.AbstractPlot`.
+
+*Parameters*
+    graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}
+        Network graph
+    label_nodes::Bool
+        Optional. Plot labels on nodes (Default: `false`)
+    label_edges::Bool
+        Optional. Plot labels on edges (Default: `false`)
+    fontsize::Real
+        Optional. Fontsize of labels (Default: `12`)
+    fontfamily::String
+        Optional. Font Family of labels (Default: `"Arial"`)
+    fontcolor::Union{Symbol,<:Colors.AbstractRGB}
+        Optional. Color of the labels (Default: `:black`)
+    textalign::Symbol
+        Optional. Alignment of text. (Default: `:center`)
+    plot_size::Tuple{Int,Int}
+        Optional. Size of the plot in pixels (Default: `(600, 600)`)
+    dpi::Int
+        Optional. Dots-per-inch of the plot (Default: `300`)
+
+*Returns*
+    fig<:Plots.AbstractPlot
+        Plots.jl figure
+"""
+function plot_graph(graph::PowerModelsGraph{T};
+                    label_nodes=false,
+                    label_edges=false,
+                    fontsize=12,
+                    fontfamily="Arial",
+                    fontcolor=:black,
+                    textalign=:center,
+                    plot_size=(600,600),
+                    dpi=300,
+                    kwargs...) where T <: LightGraphs.AbstractGraph
 
     fig = Plots.plot(legend=false, xaxis=false, yaxis=false, grid=false, size=plot_size, dpi=dpi)
 
