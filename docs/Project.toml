@@ -1,7 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 PowerModels = "c36e90e8-916a-50a6-bd94-075b64ef4655"
-PowerModelsAnalytics = "7425d11c-6b70-11e9-2bc6-9bcd3191d4b9"
 
 [compat]
 PowerModels = "~0.12"
