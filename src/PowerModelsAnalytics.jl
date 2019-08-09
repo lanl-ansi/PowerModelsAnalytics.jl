@@ -13,6 +13,8 @@ module PowerModelsAnalytics
     import Statistics: mean, std
     import Random: rand
 
+    import Compat: isnothing
+
     import PyCall
 
     const nx = PyCall.PyNULL()
