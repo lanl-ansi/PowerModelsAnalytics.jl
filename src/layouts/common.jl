@@ -12,7 +12,7 @@ Positions are assigned to the metadata of each node at `:x` and `:y`.
 
 * `layout_engine`
 
-    Layout Function to use. Applies only when not using `use_buscoords`.
+    Default: `kamada_kawai_layout`. Layout Function to use. Applies only when not using `use_buscoords`.
 
 * `use_buscoords::Bool`
 
