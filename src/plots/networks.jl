@@ -3,49 +3,89 @@
 
 Plots a network `graph`. Returns `PowerModelsGraph` and `Plots.AbstractPlot`.
 
-*Parameters*
-    graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}
-        Network graph
-    filename::String
-        Optional. File to output the plot to, will use user-set Plots.jl backend.
-    label_nodes::Bool
-        Optional. Plot labels on nodes (Default: `false`)
-    label_edges::Bool
-        Optional. Plot labels on edges (Default: `false`)
-    colors::Dict{String,<:Colors.AbstractRGB}
-        Optional. Changes to default colors, see `default_colors` for available components. (Default: `Dict()`)
-    load_color_range::Union{Nothing,AbstractRange}
-        Optional. Range of colors for load statuses to be displayed in. (Default: `nothing`)
-    node_size_lims::Array
-        Optional. Min/Max values for the size of nodes. (Default: `[10, 25]`)
-    edge_width_lims::Array
-        Optional. Min/Max values for the width of edges. (Default: `[1, 2.5]`)
-    positions::Union{Dict, PowerModelsGraph}
-        Optional. Used to specify node locations of graph (avoids running layout algorithm every time) (Default: `Dict()`)
-    use_buscoords::Bool
-        Optional. Use buscoord field on buses for node positions (Default: `false`)
-    spring_const::Float64
-        Optional. Only used if buscoords=true. Spring constant to be used to force-direct-layout buses with no buscoord field (Default: `1e-3`)
-    apply_spring_layout::Bool
-        Optional. Apply spring layout after initial layout (Default: `false`)
-    fontsize::Real
-        Optional. Fontsize of labels (Default: `12`)
-    fontfamily::String
-        Optional. Font Family of labels (Default: `"Arial"`)
-    fontcolor::Union{Symbol,<:Colors.AbstractRGB}
-        Optional. Color of the labels (Default: `:black`)
-    textalign::Symbol
-        Optional. Alignment of text. (Default: `:center`)
-    plot_size::Tuple{Int,Int}
-        Optional. Size of the plot in pixels (Default: `(600, 600)`)
-    dpi::Int
-        Optional. Dots-per-inch of the plot (Default: `300`)
+# Parameters
 
-*Returns*
-    graph::PowerModelsGraph
-        PowerModelsGraph of the network
-    fig<:Plots.AbstractPlot
-        Plots.jl figure
+* `graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}`
+
+    Network graph
+
+* `filename::Union{Nothing,String}`
+
+    Default: `nothing`. File to output the plot to, will use user-set Plots.jl backend.
+
+* `label_nodes::Bool`
+
+    Default: `false`. Plot labels on nodes.
+
+* `label_edges::Bool`
+
+    Default: `false`. Plot labels on edges.
+
+* `colors::Dict{String,<:Colors.AbstractRGB}`
+
+    Default: `Dict()`. Changes to default colors, see `default_colors` for available components.
+
+* `load_color_range::Union{Nothing,AbstractRange}`
+
+    Default: `nothing`. Range of colors for load statuses to be displayed in.
+
+* `node_size_lims::Array`
+
+    Default: `[10, 25]`. Min/Max values for the size of nodes.
+
+* `edge_width_lims::Array`
+
+    Default: `[1, 2.5]`. Min/Max values for the width of edges.
+
+* `positions::Union{Dict, PowerModelsGraph}`
+
+    Default: `Dict()`. Used to specify node locations of graph (avoids running layout algorithm every time).
+
+* `use_buscoords::Bool`
+
+    Default: `false`. Use buscoord field on buses for node positions.
+
+* `spring_const::Float64`
+
+    Default: `1e-3`. Only used if buscoords=true. Spring constant to be used to force-direct-layout buses with no buscoord field.
+
+* `apply_spring_layout::Bool`
+
+    Default: `false`. Apply spring layout after initial layout.
+
+* `fontsize::Real`
+
+    Default: `12`. Fontsize of labels.
+
+* `fontfamily::String`
+
+    Default: `"Arial"`. Font Family of labels.
+
+* `fontcolor::Union{Symbol,<:Colors.AbstractRGB}`
+
+    Default: `:black`. Color of the labels.
+
+* `textalign::Symbol`
+
+    Default: `:center`. Alignment of text.
+
+* `plot_size::Tuple{Int,Int}`
+
+    Default: `(300, 300)`. Size of the plot in pixels.
+
+* `dpi::Int`
+
+    Default: `100`. Dots-per-inch of the plot.
+
+# Returns
+
+* `graph::PowerModelsGraph`
+
+    PowerModelsGraph of the network
+
+* fig<:Plots.AbstractPlot
+
+    Plots.jl figure
 """
 function plot_network(graph::PowerModelsGraph{T};
                       filename::Union{Nothing,String}=nothing,
@@ -63,8 +103,8 @@ function plot_network(graph::PowerModelsGraph{T};
                       fontfamily::String="Arial",
                       fontcolor::Union{Symbol,<:Colors.AbstractRGB}=:black,
                       textalign::Symbol=:center,
-                      plot_size::Tuple{Int,Int}=(600,600),
-                      dpi::Int=300) where T <: LightGraphs.AbstractGraph
+                      plot_size::Tuple{Int,Int}=(300,300),
+                      dpi::Int=100) where T <: LightGraphs.AbstractGraph
 
     apply_plot_network_metadata!(graph; colors=colors, load_color_range=load_color_range, node_size_lims=node_size_lims, edge_width_lims=edge_width_lims)
 
@@ -101,27 +141,51 @@ Plots a whole network `case` at the bus-level. Returns `PowerModelsGraph` and `P
 This function will build the graph from the `case`. Additional `kwargs` are passed to
 `plot_network(graph; kwargs...)`.
 
-*Parameters*
-    case::Dict{String,Any}
-        Network case data structure
-    edge_types::Array
-        Optional. List of component types that are graph edges. Default: `["branch", "dcline", "trans"]`
-    gen_types::Dict{String,Dict{String,String}}
-        Optional. Dictionary containing information about different generator types, including basic `gen` and `storage`. Default: $(Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"), "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")))
-    exclude_gens::Union{Nothing,Array}
-        Optional. A list of patterns of generator names to not include in the graph. Default: `nothing`
-    aggregate_gens::Bool
-        Optional. If `true`, generators will be aggregated by type for each bus. Default: `false`
-    switch::String
-        Optional. The keyword that indicates branches are switches. Default: `"breaker"`
-    kwargs
-        Optional. Passed to `plot_network(graph; kwargs...)`
+# Parameters
 
-*Returns*
-    graph::PowerModelsGraph
-        PowerModelsGraph of the network
-    fig<:Plots.AbstractPlot
-        Plots.jl figure
+* `case::Dict{String,Any}`
+
+    Network case data structure
+
+* `edge_types::Array`
+
+    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+
+* `gen_types::Dict{String,Dict{String,String}}`
+
+    Default:
+    ```
+    Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
+                     "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
+    ```
+
+    Dictionary containing information about different generator types, including basic `gen` and `storage`.
+
+* `exclude_gens::Union{Nothing,Array}`
+
+    Default: `nothing`. A list of patterns of generator names to not include in the graph.
+
+* `aggregate_gens::Bool`
+
+    Default: `false`. If `true`, generators will be aggregated by type for each bus.
+
+* `switch::String`
+
+    Default: `"breaker"`. The keyword that indicates branches are switches.
+
+* `kwargs`
+
+    Passed to `plot_network(graph; kwargs...)`
+
+# Returns
+
+* `graph::PowerModelsGraph`
+
+    PowerModelsGraph of the network
+
+* `fig<:Plots.AbstractPlot`
+
+    Plots.jl figure
 """
 function plot_network(case::Dict{String,Any};
                       edge_types::Array{String}=["branch", "dcline", "trans"],
@@ -155,27 +219,51 @@ disabled and switch branches. Returns `PowerModelsGraph` and `Plots.AbstractPlot
 function will build the graph from the `case`. Additional `kwargs` are passed to
 `plot_network(graph; kwargs...)`.
 
-*Parameters*
-    case::Dict{String,Any}
-        Network case data structure
-    edge_types::Array
-        Optional. List of component types that are graph edges. Default: `["branch", "dcline", "trans"]`
-    gen_types::Dict{String,Dict{String,String}}
-        Optional. Dictionary containing information about different generator types, including basic `gen` and `storage`. Default: $(Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"), "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")))
-    exclude_gens::Union{Nothing,Array}
-        Optional. A list of patterns of generator names to not include in the graph. Default: `nothing`
-    aggregate_gens::Bool
-        Optional. If `true`, generators will be aggregated by type for each bus. Default: `false`
-    switch::String
-        Optional. The keyword that indicates branches are switches. Default: `"breaker"`
-    kwargs
-        Optional. Passed to `plot_network(graph; kwargs...)`
+# Parameters
 
-*Returns*
-    graph::PowerModelsGraph
-        PowerModelsGraph of the network
-    fig<:Plots.AbstractPlot
-        Plots.jl figure
+* `case::Dict{String,Any}`
+
+    Network case data structure
+
+* `edge_types::Array`
+
+    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+
+* `gen_types::Dict{String,Dict{String,String}}`
+
+    Default:
+    ```
+    Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
+                     "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
+    ```
+
+    Dictionary containing information about different generator types, including basic `gen` and `storage`.
+
+* `exclude_gens::Union{Nothing,Array}`
+
+    Default: `nothing`. A list of patterns of generator names to not include in the graph.
+
+* `aggregate_gens::Bool`
+
+    Default: `false`. If `true`, generators will be aggregated by type for each bus.
+
+* `switch::String`
+
+    Default: `"breaker"`. The keyword that indicates branches are switches.
+
+* `kwargs`
+
+    Passed to `plot_network(graph; kwargs...)`
+
+# Returns
+
+* `graph::PowerModelsGraph`
+
+    PowerModelsGraph of the network
+
+* `fig<:Plots.AbstractPlot`
+
+    Plots.jl figure
 """
 function plot_load_blocks(case::Dict{String,Any};
                           edge_types::Array{String}=["branch", "dcline", "trans"],

@@ -1,5 +1,5 @@
 ### Checks parameters in PowerModels components ###
-
+""
 function parameter_check_summary(data::Dict{String,Any})
     if InfrastructureModels.ismultinetwork(data)
         error("parameter_check_summary does not yet support multinetwork data")
@@ -27,6 +27,7 @@ function parameter_check_summary(data::Dict{String,Any})
 end
 
 
+""
 function _parameter_check_bus(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
@@ -57,6 +58,7 @@ function _parameter_check_bus(data::Dict{String,Any})
 end
 
 
+""
 function _parameter_check_load(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
@@ -81,6 +83,7 @@ function _parameter_check_load(data::Dict{String,Any})
 end
 
 
+""
 function _parameter_check_shunt(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
@@ -99,6 +102,7 @@ function _parameter_check_shunt(data::Dict{String,Any})
 end
 
 
+""
 function _parameter_check_gen(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
@@ -155,6 +159,7 @@ function _parameter_check_gen(data::Dict{String,Any})
 end
 
 
+""
 function _parameter_check_branch(data::Dict{String,Any})
     messages = Dict{Symbol,Set{Int}}()
 
@@ -286,6 +291,7 @@ function _parameter_check_branch(data::Dict{String,Any})
 end
 
 
+""
 function _compute_mva_ub(branch::Dict{String,Any}, bus_lookup, vad_bound::Real)
     vad_max = max(abs(branch["angmin"]), abs(branch["angmax"]))
     if vad_bound > vad_max
@@ -314,6 +320,7 @@ function _compute_mva_ub(branch::Dict{String,Any}, bus_lookup, vad_bound::Real)
 end
 
 
+""
 function _parameter_check_network(data::Dict{String,Any})
     messages = Dict{Symbol,Number}()
 
@@ -323,4 +330,3 @@ function _parameter_check_network(data::Dict{String,Any})
 
     return messages
 end
-

@@ -3,23 +3,43 @@
 
 Builds a PowerModelsGraph of a PowerModels/PowerModelsDistribution network `case`.
 
-*Parameters*
-    case::Dict{String,Any}
-        Network case data structure
-    edge_types::Array
-        Optional. List of component types that are graph edges. Default: `["branch", "dcline", "trans"]`
-    gen_types::Dict{String,Dict{String,String}}
-        Optional. Dictionary containing information about different generator types, including basic `gen` and `storage`. Default: $(Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"), "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")))
-    exclude_gens::Union{Nothing,Array}
-        Optional. A list of patterns of generator names to not include in the graph. Default: `nothing`
-    aggregate_gens::Bool
-        Optional. If `true`, generators will be aggregated by type for each bus. Default: `false`
-    switch::String
-        Optional. The keyword that indicates branches are switches. Default: `"breaker"`
+# Parameters
 
-*Returns*
-    graph::PowerModelsGraph{LightGraphs.SimpleDiGraph}
-        Simple Directional Graph including metadata
+* `case::Dict{String,Any}`
+
+    Network case data structure
+
+* `edge_types::Array`
+
+    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+
+* `gen_types::Dict{String,Dict{String,String}}`
+
+    Default:
+    ```
+    Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
+        "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
+    ```
+
+    Dictionary containing information about different generator types, including basic `gen` and `storage`.
+
+* `exclude_gens::Union{Nothing,Array}`
+
+    Default: `nothing`. A list of patterns of generator names to not include in the graph.
+
+* `aggregate_gens::Bool`
+
+    Default: `false`. If `true`, generators will be aggregated by type for each bus.
+
+* `switch::String`
+
+    Default: `"breaker"`. The keyword that indicates branches are switches.
+
+# Returns
+
+* `graph::PowerModelsGraph{LightGraphs.SimpleDiGraph}`
+
+    Simple Directional Graph including metadata
 """
 function build_graph_network(case::Dict{String,Any};
                              edge_types=["branch", "dcline", "trans"],
@@ -131,23 +151,43 @@ end
 
 Builds a PowerModelsGraph of a PowerModels/PowerModelsDistribution network `case` separated into load blocks using switches / disabled branches.
 
-*Parameters*
-    case::Dict{String,Any}
-        Network case data structure
-    edge_types::Array
-        Optional. List of component types that are graph edges. Default: `["branch", "dcline", "trans"]`
-    gen_types::Dict{String,Dict{String,String}}
-        Optional. Dictionary containing information about different generator types, including basic `gen` and `storage`. Default: $(Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"), "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")))
-    exclude_gens::Union{Nothing,Array}
-        Optional. A list of patterns of generator names to not include in the graph. Default: `nothing`
-    aggregate_gens::Bool
-        Optional. If `true`, generators will be aggregated by type for each bus. Default: `false`
-    switch::String
-        Optional. The keyword that indicates branches are switches. Default: `"breaker"`
+# Parameters
 
-*Returns*
-    graph::PowerModelsGraph{LightGraphs.SimpleDiGraph}
-        Simple Directional Graph including metadata
+* `case::Dict{String,Any}`
+
+    Network case data structure
+
+* `edge_types::Array`
+
+    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+
+* `gen_types::Dict{String,Dict{String,String}}`
+
+    Default:
+    ```
+    Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
+        "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
+    ```
+
+    Dictionary containing information about different generator types, including basic `gen` and `storage`.
+
+* `exclude_gens::Union{Nothing,Array}`
+
+    Default: `nothing`. A list of patterns of generator names to not include in the graph.
+
+* `aggregate_gens::Bool`
+
+    Default: `false`. If `true`, generators will be aggregated by type for each bus.
+
+* `switch::String`
+
+    Default: `"breaker"`. The keyword that indicates branches are switches.
+
+# Returns
+
+* `graph::PowerModelsGraph{LightGraphs.SimpleDiGraph}`
+
+    Simple Directional Graph including metadata
 """
 function build_graph_load_blocks(case::Dict{String,Any};
                                  edge_types=["branch", "dcline", "trans"],
@@ -256,21 +296,30 @@ end
 
 
 """
-    apply_plot_network_metadata!(graph, colors, load_color_range, scale_nodes, scale_edges)
+    apply_plot_network_metadata!(graph; kwargs...)
 
 Builds metadata properties, i.e. color/size of nodes/edges, for plotting based on graph metadata
+# Parameters
 
-*Parameters*
-graph::PowerModelsGraph
+* `graph::PowerModelsGraph`
+
     Graph of power network
-colors::Dict{String,<:Colors.AbstractRGB}
-    Optional. Dictionary of colors to be changed from `default_colors`. Default: `$(Dict())`
-load_color_range::Union{Nothing,AbstractRange}
-    Optional. Range of colors for load statuses to be displayed in. Default: `nothing`
-scale_nodes::Array
-    Optional. Min/Max values for the size of nodes. Default: `[10, 25]`
-scale_edges::Array
-    Optional. Min/Max values for the width of edges. Default: `[1, 2.5]`
+
+* `colors::Dict{String,<:Colors.AbstractRGB}`
+
+    Default: `Dict()`. Dictionary of colors to be changed from `default_colors`.
+
+* `load_color_range::Union{Nothing,AbstractRange}`
+
+    Default: `nothing`. Range of colors for load statuses to be displayed in.
+
+* `node_size_lims::Array`
+
+    Default: `[10, 25]`. Min/Max values for the size of nodes.
+
+* `edge_width_lims::Array`
+
+    Default: `[1, 2.5]`. Min/Max values for the width of edges.
 """
 function apply_plot_network_metadata!(graph::PowerModelsGraph{T};
                                       colors::Dict{String,<:Colors.AbstractRGB}=Dict{String,Colors.AbstractRGB}(),

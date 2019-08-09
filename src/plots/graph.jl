@@ -3,29 +3,49 @@
 
 Plots a graph. Returns `Plots.AbstractPlot`.
 
-*Parameters*
-    graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}
-        Network graph
-    label_nodes::Bool
-        Optional. Plot labels on nodes (Default: `false`)
-    label_edges::Bool
-        Optional. Plot labels on edges (Default: `false`)
-    fontsize::Real
-        Optional. Fontsize of labels (Default: `12`)
-    fontfamily::String
-        Optional. Font Family of labels (Default: `"Arial"`)
-    fontcolor::Union{Symbol,<:Colors.AbstractRGB}
-        Optional. Color of the labels (Default: `:black`)
-    textalign::Symbol
-        Optional. Alignment of text. (Default: `:center`)
-    plot_size::Tuple{Int,Int}
-        Optional. Size of the plot in pixels (Default: `(600, 600)`)
-    dpi::Int
-        Optional. Dots-per-inch of the plot (Default: `300`)
+# Parameters
 
-*Returns*
-    fig<:Plots.AbstractPlot
-        Plots.jl figure
+* `graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}`
+
+    Network graph
+
+* `label_nodes::Bool`
+
+    Default: `false`. Plot labels on nodes.
+
+* `label_edges::Bool`
+
+    Default: `false`. Plot labels on edges.
+
+* `fontsize::Real`
+
+    Default: `12`. Fontsize of labels.
+
+* `fontfamily::String`
+
+    Default: `"Arial"`. Font Family of labels.
+
+* `fontcolor::Union{Symbol,<:Colors.AbstractRGB}`
+
+    Default: `:black`. Color of the labels.
+
+* `textalign::Symbol`
+
+    Default: `:center`. Alignment of text.
+
+* `plot_size::Tuple{Int,Int}`
+
+    Default: `(300, 300)`. Size of the plot in pixels.
+
+* `dpi::Int`
+
+    Default: `100`. Dots-per-inch of the plot.
+
+# Returns
+
+* `fig<:Plots.AbstractPlot`
+
+    Plots.jl figure
 """
 function plot_graph(graph::PowerModelsGraph{T};
                     label_nodes=false,
