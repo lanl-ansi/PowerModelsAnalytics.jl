@@ -1,3 +1,7 @@
+ENV["PYTHON"]=""
+import Pkg
+Pkg.build("PyCall")
+
 using PowerModelsAnalytics
 
 import PowerModels
