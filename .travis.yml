@@ -9,6 +9,13 @@ julia:
 matrix:
   allow_failures:
     - julia: nightly
+addons:
+  apt:
+    packages:
+      - python3-matplotlib
+env:
+  matrix:
+    - PYTHON=python3 # python 3.5
 script:
   - julia --project -e 'import Pkg; Pkg.build(); Pkg.instantiate()'
   - julia --project -e 'import Pkg; Pkg.test(coverage=true);'
