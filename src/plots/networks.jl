@@ -82,10 +82,6 @@ Plots a network `graph`. Returns `PowerModelsGraph` and `Plots.AbstractPlot`.
 * `graph::PowerModelsGraph`
 
     PowerModelsGraph of the network
-
-* fig<:Plots.AbstractPlot
-
-    Plots.jl figure
 """
 function plot_network(graph::PowerModelsGraph{T};
                       filename::Union{Nothing,String}=nothing,
@@ -130,7 +126,7 @@ function plot_network(graph::PowerModelsGraph{T};
         Plots.display(fig)
     end
 
-    return graph, fig
+    return graph
 end
 
 
@@ -182,10 +178,6 @@ This function will build the graph from the `case`. Additional `kwargs` are pass
 * `graph::PowerModelsGraph`
 
     PowerModelsGraph of the network
-
-* `fig<:Plots.AbstractPlot`
-
-    Plots.jl figure
 """
 function plot_network(case::Dict{String,Any};
                       edge_types::Array{String}=["branch", "dcline", "trans"],
@@ -206,8 +198,8 @@ function plot_network(case::Dict{String,Any};
         set_properties!(graph, node, Dict(:x=>x, :y=>y))
     end
 
-    graph, fig = plot_network(graph; kwargs...)
-    return graph, fig
+    graph = plot_network(graph; kwargs...)
+    return graph
 end
 
 
@@ -260,10 +252,6 @@ function will build the graph from the `case`. Additional `kwargs` are passed to
 * `graph::PowerModelsGraph`
 
     PowerModelsGraph of the network
-
-* `fig<:Plots.AbstractPlot`
-
-    Plots.jl figure
 """
 function plot_load_blocks(case::Dict{String,Any};
                           edge_types::Array{String}=["branch", "dcline", "trans"],
@@ -284,6 +272,6 @@ function plot_load_blocks(case::Dict{String,Any};
         set_properties!(graph, node, Dict(:x=>x, :y=>y))
     end
 
-    graph, fig = plot_network(graph; kwargs...)
-    return graph, fig
+    graph = plot_network(graph; kwargs...)
+    return graph
 end
