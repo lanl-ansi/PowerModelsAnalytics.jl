@@ -17,10 +17,10 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 Colors = "^0.9"
-InfrastructureModels = "^0.2"
+InfrastructureModels = "~0.3"
 LightGraphs = "^1.2"
 Plots = "^0.25"
-PowerModels = "^0.12"
+PowerModels = "^0.13"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
