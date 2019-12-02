@@ -11,7 +11,7 @@ Builds a PowerModelsGraph of a PowerModels/PowerModelsDistribution network `case
 
 * `edge_types::Array`
 
-    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+    Default: `["branch", "dcline", "transformer"]`. List of component types that are graph edges.
 
 * `gen_types::Dict{String,Dict{String,String}}`
 
@@ -42,7 +42,7 @@ Builds a PowerModelsGraph of a PowerModels/PowerModelsDistribution network `case
     Simple Directional Graph including metadata
 """
 function build_graph_network(case::Dict{String,Any};
-                             edge_types=["branch", "dcline", "trans"],
+                             edge_types=["branch", "dcline", "transformer"],
                              gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
                                                                               "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
                              exclude_gens::Union{Nothing,Array}=nothing,
@@ -69,7 +69,7 @@ function build_graph_network(case::Dict{String,Any};
             fixed = get(edge, "fixed", false)
             status = Bool(get(edge, "br_status", 1))
 
-            edge_membership = get(edge, "transformer", false) || edge_type == "trans" ? "transformer" : switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line"
+            edge_membership = get(edge, "transformer", false) || edge_type == "transformer" ? "transformer" : switch && status && !fixed ? "closed switch" : switch && !status && !fixed ? "open switch" : switch && status && fixed ? "fixed closed switch" : switch && !status && fixed ? "fixed open switch" : !switch && status ? "enabled line" : "disabled line"
             props = Dict{Symbol,Any}(:i => edge["index"],
                                      :switch => switch,
                                      :status => status,
@@ -159,7 +159,7 @@ Builds a PowerModelsGraph of a PowerModels/PowerModelsDistribution network `case
 
 * `edge_types::Array`
 
-    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+    Default: `["branch", "dcline", "transformer"]`. List of component types that are graph edges.
 
 * `gen_types::Dict{String,Dict{String,String}}`
 
@@ -190,7 +190,7 @@ Builds a PowerModelsGraph of a PowerModels/PowerModelsDistribution network `case
     Simple Directional Graph including metadata
 """
 function build_graph_load_blocks(case::Dict{String,Any};
-                                 edge_types=["branch", "dcline", "trans"],
+                                 edge_types=["branch", "dcline", "transformer"],
                                  gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
                                                                                   "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
                                  exclude_gens::Union{Nothing,Array}=nothing,

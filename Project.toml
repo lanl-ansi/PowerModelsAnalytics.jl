@@ -1,7 +1,7 @@
 name = "PowerModelsAnalytics"
 uuid = "7425d11c-6b70-11e9-2bc6-9bcd3191d4b9"
 authors = ["David M Fobes <dfobes@lanl.gov>", "Carleton Coffrin"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 ColorVectorSpace = "c3611d14-8923-5661-9e6a-0046d554d3a4"
@@ -17,10 +17,10 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 Colors = "^0.9"
-InfrastructureModels = "^0.2"
-LightGraphs = "^1.2"
-Plots = "^0.25"
-PowerModels = "^0.12"
+InfrastructureModels = "~0.3.1"
+LightGraphs = "^1.3"
+Plots = "^0.28"
+PowerModels = "~0.13"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

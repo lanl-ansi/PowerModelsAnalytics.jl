@@ -145,7 +145,7 @@ This function will build the graph from the `case`. Additional `kwargs` are pass
 
 * `edge_types::Array`
 
-    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+    Default: `["branch", "dcline", "transformer"]`. List of component types that are graph edges.
 
 * `gen_types::Dict{String,Dict{String,String}}`
 
@@ -180,7 +180,7 @@ This function will build the graph from the `case`. Additional `kwargs` are pass
     PowerModelsGraph of the network
 """
 function plot_network(case::Dict{String,Any};
-                      edge_types::Array{String}=["branch", "dcline", "trans"],
+                      edge_types::Array{String}=["branch", "dcline", "transformer"],
                       gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
                                                                        "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
                       exclude_gens::Union{Nothing,Array{String}}=nothing,
@@ -219,7 +219,7 @@ function will build the graph from the `case`. Additional `kwargs` are passed to
 
 * `edge_types::Array`
 
-    Default: `["branch", "dcline", "trans"]`. List of component types that are graph edges.
+    Default: `["branch", "dcline", "transformer"]`. List of component types that are graph edges.
 
 * `gen_types::Dict{String,Dict{String,String}}`
 
@@ -254,7 +254,7 @@ function will build the graph from the `case`. Additional `kwargs` are passed to
     PowerModelsGraph of the network
 """
 function plot_load_blocks(case::Dict{String,Any};
-                          edge_types::Array{String}=["branch", "dcline", "trans"],
+                          edge_types::Array{String}=["branch", "dcline", "transformer"],
                           gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
                                                                            "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
                           exclude_gens::Union{Nothing,Array{String}}=nothing,
