@@ -46,11 +46,11 @@ function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{St
                            intermediate::Bool=false,
                            legend_position::Symbol=:best)
     x = 0:length(result["nw"])-1
-    generation = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(gen["pg"]))*result["baseMVA"] for (i, gen) in nw["gen"])) for (n, nw) in result["nw"]]; by=x->x[1])]
-    storage = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(strg["ps"]))*result["baseMVA"] for (i, strg) in nw["storage"])) for (n, nw) in result["nw"]]; by=x->x[1])]
+    generation = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(gen["pg"]))*nw["baseMVA"] for (i, gen) in nw["gen"])) for (n, nw) in result["nw"]]; by=x->x[1])]
+    storage = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(strg["ps"]))*nw["baseMVA"] for (i, strg) in nw["storage"])) for (n, nw) in result["nw"]]; by=x->x[1])]
     total_generated = generation .+ storage
-    total_load_served = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["status"]*case["nw"]["$n"]["load"]["$i"]["pd"]))*result["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in result["nw"]]; by=x->x[1])]
-    total_load_forecast = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["pd"]))*case["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in case["nw"]]; by=x->x[1])]
+    total_load_served = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["status"]*case["nw"]["$n"]["load"]["$i"]["pd"]))*nw["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in result["nw"]]; by=x->x[1])]
+    total_load_forecast = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["pd"]))*case["nw"]["$n"]["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in case["nw"]]; by=x->x[1])]
 
     @debug "" total_generated total_load_served total_load_forecast
 
