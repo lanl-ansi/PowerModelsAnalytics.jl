@@ -1,6 +1,9 @@
 PowerModelsAnalytics.jl Change Log
 ==================================
 
+### v0.2.1
+- Fix dependency issue for Julia < v1.3 of SpecialFunctions in Manifest.toml
+
 ### v0.2.0
 - Support PowerModels v0.13 and PowerModelsDistribution v0.6.0
 
