@@ -25,7 +25,7 @@ Plots a network `graph`. Returns `PowerModelsGraph` and `Plots.AbstractPlot`.
 
     Default: `Dict()`. Changes to default colors, see `default_colors` for available components.
 
-* `load_color_range::Union{Nothing,AbstractRange}`
+* `load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}`
 
     Default: `nothing`. Range of colors for load statuses to be displayed in.
 
@@ -88,7 +88,7 @@ function plot_network(graph::PowerModelsGraph{T};
                       label_nodes::Bool=false,
                       label_edges::Bool=false,
                       colors::Dict{String,<:Colors.AbstractRGB}=Dict{String,Colors.AbstractRGB}(),
-                      load_color_range::Union{Nothing,AbstractRange}=nothing,
+                      load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}=nothing,
                       node_size_lims::Array=[10, 25],
                       edge_width_lims::Array=[1, 2.5],
                       positions::Union{Dict,PowerModelsGraph}=Dict(),

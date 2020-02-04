@@ -309,7 +309,7 @@ Builds metadata properties, i.e. color/size of nodes/edges, for plotting based o
 
     Default: `Dict()`. Dictionary of colors to be changed from `default_colors`.
 
-* `load_color_range::Union{Nothing,AbstractRange}`
+* `load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}`
 
     Default: `nothing`. Range of colors for load statuses to be displayed in.
 
@@ -323,7 +323,7 @@ Builds metadata properties, i.e. color/size of nodes/edges, for plotting based o
 """
 function apply_plot_network_metadata!(graph::PowerModelsGraph{T};
                                       colors::Dict{String,<:Colors.AbstractRGB}=Dict{String,Colors.AbstractRGB}(),
-                                      load_color_range::Union{Nothing,AbstractRange}=nothing,
+                                      load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}=nothing,
                                       node_size_lims::Array=[10, 25],
                                       edge_width_lims::Array=[1, 2.5]) where T <: LightGraphs.AbstractGraph
     colors = merge(default_colors, colors)
