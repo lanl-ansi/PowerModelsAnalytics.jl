@@ -1,6 +1,7 @@
 using PowerModelsAnalytics
 
 import PowerModels
+import PowerModelsDistribution
 import LightGraphs
 import Colors
 
@@ -12,7 +13,7 @@ using Test
     data = PowerModels.parse_file("$(joinpath(dirname(pathof(PowerModels)), ".."))/test/data/matpower/case5.m")
 
     mp_data = PowerModels.parse_file("$(joinpath(dirname(pathof(PowerModels)), ".."))/test/data/matpower/case5.m")
-    PowerModels.make_multiconductor!(mp_data, 3)
+    PowerModelsDistribution.make_multiconductor!(mp_data, 3)
 
     n_graph = build_graph_network(data)
     n_graph_load_colors = build_graph_network(data)
