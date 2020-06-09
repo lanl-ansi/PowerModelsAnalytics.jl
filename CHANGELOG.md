@@ -1,7 +1,8 @@
 # PowerModelsAnalytics.jl Change Log
 
-## staged
+## v0.2.2
 
+- Add additional compatible versions to dependencies
 - Fix type enforcement for `load_color_range` (#8)
 
 ## v0.2.1
