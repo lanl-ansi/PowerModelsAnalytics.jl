@@ -50,7 +50,7 @@ Plots a graph. Returns `Plots.AbstractPlot`.
 function plot_graph(graph::PowerModelsGraph{T};
                     label_nodes=false,
                     label_edges=false,
-                    fontsize=12,
+                    fontsize=2,
                     fontfamily="Arial",
                     fontcolor=:black,
                     textalign=:center,
@@ -64,7 +64,7 @@ function plot_graph(graph::PowerModelsGraph{T};
     node_keys = sort(collect(keys(nodes)))
     node_x = [nodes[node][1] for node in node_keys]
     node_y = [nodes[node][2] for node in node_keys]
-    node_labels = [Plots.text(label_nodes ? get_property(graph, node, :label, "") : "", fontsize, fontcolor, textalign, fontfamily) for node in node_keys]
+    node_labels = [Plots.text(label_nodes || hasprop(graph, node, :force_label) ? get_property(graph, node, :label, "") : "", fontsize, fontcolor, textalign, fontfamily) for node in node_keys]
     node_colors = [get_property(graph, node, :node_color, :black) for node in node_keys]
     node_sizes = [get_property(graph, node, :node_size, 1) for node in node_keys]
 

@@ -382,17 +382,26 @@ function build_graph_network_eng(case::Dict{String,<:Any};
         "generator" => Dict{String,String}(
             "label" => "~",
             "size" => "pg",
+            "active_power" => "pg",
+            "reactive_power" => "qg",
         ),
         "solar" => Dict{String,String}(
             "label" => "pv",
             "size" => "pg",
+            "active_power" => "pg",
+            "reactive_power" => "qg",
         ),
         "storage" => Dict{String,String}(
             "label" => "S",
             "size" => "ps",
+            "active_power" => "ps",
+            "reactive_power" => "qs",
         ),
         "voltage_source" => Dict{String,String}(
-            "label" => "V"
+            "label" => "V",
+            "size" => "pg",
+            "active_power" => "pg",
+            "reactive_power" => "qg",
         )
     ),
     kwargs...
@@ -486,9 +495,39 @@ function build_graph_network_eng(case::Dict{String,<:Any};
             properties = Dict{Symbol,Any}(:edge_membership => "connector", :switch => false, :label => "")
             set_properties!(graph, LightGraphs.Edge(fr_node, to_node), properties)
 
-            node_properties = Dict{Symbol,Any}(:node_membership => "energized generator", :label => get(prop_map, "label", ""))
+            status = isa(obj["status"], Enum) ? Int(obj["status"]) : obj["status"]
+
+            energized = false
+            is_sync_cond = true
+            if haskey(prop_map, "active_power") && haskey(obj, prop_map["active_power"])
+                if sum(abs.(obj[prop_map["active_power"]])) > 0
+                    energized = true
+                    is_sync_cond = false
+                end
+            end
+
+            if haskey(prop_map, "reactive_power") && haskey(obj, prop_map["reactive_power"])
+                if sum(abs.(obj[prop_map["reactive_power"]])) > 0
+                    energized = true
+                    if !is_sync_cond
+                        is_sync_cond = true
+                    end
+                end
+            end
+
+            is_sync_cond = status == 0 ? false : is_sync_cond
+
+            engergized_str = energized ? "energized" : status > 0 ? "enabled" : "disabled"
+            gen_str = is_sync_cond && energized ? "synchronous condenser" : "generator"
+            node_membership = "$engergized_str $gen_str"
+
+            node_properties = Dict{Symbol,Any}(:node_membership => node_membership, :label => id)
             if haskey(prop_map, "size")
                 node_properties[:size] = sum(obj[prop_map["size"]])
+            end
+            if !isempty(get(prop_map, "label", ""))
+                node_properties[:label] = prop_map["label"]
+                node_properties[:force_label] = true
             end
             set_properties!(graph, to_node, node_properties)
         end

@@ -95,7 +95,7 @@ function plot_network(graph::PowerModelsGraph{T};
                       use_buscoords::Bool=false,
                       spring_const::Float64=2e-1,
                       apply_spring_layout::Bool=true,
-                      fontsize::Real=12,
+                      fontsize::Real=1,
                       fontfamily::String="Arial",
                       fontcolor::Union{Symbol,<:Colors.Colorant}=:black,
                       textalign::Symbol=:center,
@@ -199,17 +199,26 @@ function plot_network(case::Dict{String,<:Any};
                 "generator" => Dict{String,String}(
                     "label" => "~",
                     "size" => "pg",
+                    "active_power" => "pg",
+                    "reactive_power" => "qg",
                 ),
                 "solar" => Dict{String,String}(
                     "label" => "pv",
                     "size" => "pg",
+                    "active_power" => "pg",
+                    "reactive_power" => "qg",
                 ),
                 "storage" => Dict{String,String}(
                     "label" => "S",
                     "size" => "ps",
+                    "active_power" => "ps",
+                    "reactive_power" => "qs",
                 ),
                 "voltage_source" => Dict{String,String}(
-                    "label" => "V"
+                    "label" => "V",
+                    "size" => "pg",
+                    "active_power" => "pg",
+                    "reactive_power" => "qg",
                 )
             )
         end
