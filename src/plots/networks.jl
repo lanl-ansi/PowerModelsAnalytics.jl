@@ -87,17 +87,17 @@ function plot_network(graph::PowerModelsGraph{T};
                       filename::Union{Nothing,String}=nothing,
                       label_nodes::Bool=false,
                       label_edges::Bool=false,
-                      colors::Dict{String,<:Colors.AbstractRGB}=Dict{String,Colors.AbstractRGB}(),
+                      colors::Dict{String,<:Colors.Colorant}=Dict{String,Colors.Colorant}(),
                       load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}=nothing,
-                      node_size_lims::Array=[10, 25],
-                      edge_width_lims::Array=[1, 2.5],
+                      node_size_lims::Array=[2, 2.5],
+                      edge_width_lims::Array=[0.5, 0.75],
                       positions::Union{Dict,PowerModelsGraph}=Dict(),
                       use_buscoords::Bool=false,
-                      spring_const::Float64=1e-3,
-                      apply_spring_layout::Bool=false,
+                      spring_const::Float64=2e-1,
+                      apply_spring_layout::Bool=true,
                       fontsize::Real=12,
                       fontfamily::String="Arial",
-                      fontcolor::Union{Symbol,<:Colors.AbstractRGB}=:black,
+                      fontcolor::Union{Symbol,<:Colors.Colorant}=:black,
                       textalign::Symbol=:center,
                       plot_size::Tuple{Int,Int}=(300,300),
                       dpi::Int=100) where T <: LightGraphs.AbstractGraph
@@ -152,7 +152,7 @@ This function will build the graph from the `case`. Additional `kwargs` are pass
     Default:
     ```
     Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
-                     "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
+                    "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
     ```
 
     Dictionary containing information about different generator types, including basic `gen` and `storage`.
@@ -179,16 +179,64 @@ This function will build the graph from the `case`. Additional `kwargs` are pass
 
     PowerModelsGraph of the network
 """
-function plot_network(case::Dict{String,Any};
-                      edge_types::Array{String}=["branch", "dcline", "transformer"],
-                      gen_types::Dict{String,Dict{String,String}}=Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
-                                                                       "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status")),
-                      exclude_gens::Union{Nothing,Array{String}}=nothing,
+function plot_network(case::Dict{String,<:Any};
+                      edge_types::Union{Missing,Vector{<:String}}=missing,
+                      gen_types::Union{Missing,Dict{String,<:Dict{<:String,<:String}}}=missing,
+                      exclude_gens::Union{Nothing,Vector{<:Any}}=nothing,
+                      node_objects::Union{Missing,Dict{String,<:Dict{String,<:String}}}=missing,
                       aggregate_gens::Bool=false,
                       switch::String="breaker",
-                      positions::Union{Dict,PowerModelsGraph}=Dict(),
+                      positions::Union{Dict{Int,<:Any},PowerModelsGraph}=Dict{Int,Any}(),
                       kwargs...)
-    graph = build_graph_network(case; edge_types=edge_types, gen_types=gen_types, exclude_gens=exclude_gens, aggregate_gens=aggregate_gens, switch=switch)
+
+    if Int(get(case, "data_model", 1)) == 0
+        if ismissing(edge_types)
+            edge_types = ["line", "transformer", "switch"]
+        end
+
+        if ismissing(node_objects)
+            node_objects = Dict{String,Dict{String,String}}(
+                "generator" => Dict{String,String}(
+                    "label" => "~",
+                    "size" => "pg",
+                ),
+                "solar" => Dict{String,String}(
+                    "label" => "pv",
+                    "size" => "pg",
+                ),
+                "storage" => Dict{String,String}(
+                    "label" => "S",
+                    "size" => "ps",
+                ),
+                "voltage_source" => Dict{String,String}(
+                    "label" => "V"
+                )
+            )
+        end
+        graph = build_graph_network_eng(case; edge_types=edge_types, node_objects=node_objects)
+    else
+        if ismissing(gen_types)
+            gen_types = Dict(
+                "gen" => Dict(
+                    "active"=>"pg",
+                    "reactive"=>"qg",
+                    "status"=>"gen_status",
+                    "active_max"=>"pmax",
+                    "active_min"=>"pmin"
+                ),
+                "storage" => Dict(
+                    "active"=>"ps",
+                    "reactive"=>"qs",
+                    "status"=>"status"
+                )
+            )
+        end
+
+        if ismissing(edge_types)
+            edge_types = ["branch", "dcline", "transformer"]
+        end
+        graph = build_graph_network(case; edge_types=edge_types, gen_types=gen_types, exclude_gens=exclude_gens, aggregate_gens=aggregate_gens, switch=switch)
+    end
 
     if isa(positions, PowerModelsGraph)
         positions = Dict(node => [get_property(positions, node, :x, 0.0), get_property(positions, node, :y, 0.0)] for node in vertices(positions))
@@ -226,7 +274,7 @@ function will build the graph from the `case`. Additional `kwargs` are passed to
     Default:
     ```
     Dict("gen"=>Dict("active"=>"pg", "reactive"=>"qg", "status"=>"gen_status", "active_max"=>"pmax", "active_min"=>"pmin"),
-                     "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
+                    "storage"=>Dict("active"=>"ps", "reactive"=>"qs", "status"=>"status"))
     ```
 
     Dictionary containing information about different generator types, including basic `gen` and `storage`.

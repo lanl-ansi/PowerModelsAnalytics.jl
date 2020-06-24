@@ -61,3 +61,76 @@ end
 function properties(graph::PowerModelsGraph{T}, obj::Union{Int,LightGraphs.AbstractEdge}) where T <: LightGraphs.AbstractGraph
     return get(graph.metadata, obj)
 end
+
+
+""
+function identify_blocks(case::Dict{String,<:Any})::Dict{Int,Set{Any}}
+    cc = calc_connected_components(case)
+
+    return Dict{Int,Set{Any}}(i => s for (i,s) in enumerate(cc))
+end
+
+
+""
+function calc_connected_components(data::Dict{String,<:Any}; edges=["line", "transformer", "switch"])::Set{Set{Any}}
+    active_bus = Dict{Any,Dict{String,Any}}(x for x in data["bus"] if Int(x.second["status"]) == 1)
+    active_bus_ids = Set{Any}([i for (i,bus) in active_bus])
+
+    neighbors = Dict{Any,Vector{Any}}(i => [] for i in active_bus_ids)
+    for edge_type in edges
+        for (id, edge_obj) in get(data, edge_type, Dict{Any,Dict{String,Any}}())
+            if edge_type == "switch"
+                status = Int(edge_obj["status"]) == 1 && Int(edge_obj["state"]) == 1
+                if status
+                    push!(neighbors[edge_obj["f_bus"]], edge_obj["t_bus"])
+                    push!(neighbors[edge_obj["t_bus"]], edge_obj["f_bus"])
+                end
+            else
+                status = Int(edge_obj["status"]) == 1
+                if status
+                    if edge_type == "line" || (edge_type == "transformer" && haskey(edge_obj, "f_bus") && haskey(edge_obj, "t_bus"))
+                        push!(neighbors[edge_obj["f_bus"]], edge_obj["t_bus"])
+                        push!(neighbors[edge_obj["t_bus"]], edge_obj["f_bus"])
+                    else
+                        for f_bus in edge_obj["bus"]
+                            for t_bus in edge_obj["bus"]
+                                if f_bus != t_bus
+                                    push!(neighbors[f_bus], t_bus)
+                                    push!(neighbors[t_bus], f_bus)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    component_lookup = Dict(i => Set{Any}([i]) for i in active_bus_ids)
+    touched = Set{Any}()
+
+    for i in active_bus_ids
+        if !(i in touched)
+            PowerModels._cc_dfs(i, neighbors, component_lookup, touched)
+        end
+    end
+
+    ccs = (Set(values(component_lookup)))
+
+    return ccs
+end
+
+
+""
+function is_energized(case::Dict{String,<:Any}, block::Set{<:Any})::Bool
+    for bus in block
+        for gen_type in ["voltage_source", "generator", "solar", "storage"]
+            for (_,obj) in get(case, gen_type, Dict{Any,Dict{String,Any}}())
+                if bus == obj["bus"] && Int(obj["status"]) == 1
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
