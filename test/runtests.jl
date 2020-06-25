@@ -24,7 +24,7 @@ using Test
 
     @testset "graphs" begin
         for graph in [n_graph, n_mp_graph, lb_graph, lb_mp_graph]
-            @test isa(graph, PowerModelsGraph{T} where T<:LightGraphs.AbstractGraph)
+            @test isa(graph, InfrastructureGraph{T} where T<:LightGraphs.AbstractGraph)
         end
 
         apply_plot_network_metadata!(n_graph)

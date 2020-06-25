@@ -10,40 +10,22 @@ end
 
 
 """
-    plot_load_summary(file, result, case; kwargs...)
+    `plot_source_demand_summary(file, result, case; kwargs...)`
 
-Plots total generation, total load served, and total forecasted load for a given `case` and `result`, saving to `file`
+    Plots total generation, total load served, and total forecasted load for a given `case` and `result`, saving to `file`
 
-# Parameters
+    Arguments:
 
-* `file::String`
-
-    file path to saved figure
-
-* `result::Dict{String,Any}`
-
-    multinetwork solution data (contains load statuses)
-
-* `case::Dict{String,Any}`
-
-    Original case file (without calcuated loads) for forecasted loads
-
-* `log::Bool`
-
-    Default: `false`. If true, plots y-axis on log scale
-
-* `intermediate::Bool`
-
-    Default: `false`. If true, plots intermediate steps of plot (for animations).
-
-* `legend_position::Symbol`
-
-    Default: `:best`. Position of legend, accepts the following symbols: `:right`, `:left`, `:top`, `:bottom`, `:inside`,
-    `:best`, `:legend`, `:topright`, `:topleft`, `:bottomleft`, `:bottomright`
+    `fileout::String`: file path to saved figure
+    `result::Dict{String,Any}`: multinetwork solution data (contains load statuses)
+    `case::Dict{String,Any}`: Original case file (without calcuated loads) for forecasted loads
+    `log_yscale::Bool`: If `true`, plots y-axis on log scale
+    `intermediate::Bool`: If `true`, plots intermediate steps of plot (for animations).
+    `legend_position::Symbol`: Position of legend, accepts the following symbols: `:right`, `:left`, `:top`, `:bottom`, `:inside`, `:best`, `:legend`, `:topright`, `:topleft`, `:bottomleft`, `:bottomright`
 """
 function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{String,Any};
-                           log::Bool=false,
-                           intermediate::Bool=false,
+                           log_yscale::Bool=false,
+                           save_intermediate_frames::Bool=false,
                            legend_position::Symbol=:best)
     x = 0:length(result["nw"])-1
     generation = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(gen["pg"]))*nw["baseMVA"] for (i, gen) in nw["gen"])) for (n, nw) in result["nw"]]; by=x->x[1])]

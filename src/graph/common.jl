@@ -5,13 +5,13 @@
 
     Arguments:
 
-    `graph::PowerModelsGraph`: Graph of power network
+    `graph::InfrastructureGraph`: Graph of power network
     `colors::Dict{String,<:Colors.Colorant}`: Dictionary of colors to be changed from `default_colors`
     `load_color_range::Vector{<:Colors.Colorant}`: Range of colors for load statuses
     `node_size_limitss::Vector{<:Real}`: Min/Max values for the size of nodes
     `edge_width_limits::Vector{<:Real}`: Min/Max values for the width of edges
 """
-function apply_plot_network_metadata!(graph::PowerModelsGraph{T};
+function apply_plot_network_metadata!(graph::InfrastructureGraph{T};
     colors::Dict{String,<:Colors.Colorant}=default_colors,
     color_range::Vector{<:Colors.AbstractRGB}=default_color_range,
     node_size_limits::Vector{<:Real}=default_node_size_limits,
@@ -60,7 +60,7 @@ end
 """
     `graph = build_power_network_graph(case::Dict{String,<:Any}; kwargs...)`
 
-    Builds a `PowerModelsGraph` from a power network `case`.
+    Builds a `InfrastructureGraph` from a power network `case`.
 
     Arguments:
 
@@ -74,7 +74,7 @@ end
 
     Returns:
 
-    `graph`: PowerModelsGraph
+    `graph`: InfrastructureGraph
 """
 function build_network_graph(case::Dict{String,<:Any};
     node_settings::Dict{String,<:Any}=default_node_settings_math,
@@ -86,7 +86,7 @@ function build_network_graph(case::Dict{String,<:Any};
     block_graph::Bool=false,
     block_connectors::Dict{String,<:Any}=default_block_connectors,
     exclusions::Dict{String,<:Vector{<:Any}}=Dict{String,Vector{Any}}(),
-    kwargs...)::PowerModelsGraph
+    kwargs...)::InfrastructureGraph
 
     if Int(get(case, "data_model", 1)) == 0
         if node_settings == default_node_settings_math
@@ -137,7 +137,7 @@ function build_network_graph(case::Dict{String,<:Any};
     n_extra_nodes = sum(Int[length(get(case, type, Dict())) for type in keys(extra_nodes)])
 
     # Generate blank graph
-    graph = PowerModelsGraph(n_nodes + n_extra_nodes)
+    graph = InfrastructureGraph(n_nodes + n_extra_nodes)
 
     extra_node2graph_map = Dict{String,Dict{Any,Int}}(type => Dict{Any,Int}() for type in keys(extra_nodes))
     n = n_nodes

@@ -1,36 +1,19 @@
 """
-    layout_graph!(graph, layout_engine; kwargs...)
+    `layout_graph!(graph::InfrastructureGraph, layout_engine::Function; kwargs...)`
 
-A routine to assign positions to all nodes of a `graph` for plotting using `layout_engine`.
-Positions are assigned to the metadata of each node at `:x` and `:y`.
+    A routine to assign positions to all nodes of a `graph` for plotting using `layout_engine`.
+    Positions are assigned to the metadata of each node at `:x` and `:y`.
 
-# Parameters
+    Arguments:
 
-* `graph::PowerModelsGraph`
-
-    Network graph
-
-* `layout_engine`
-
-    Default: `kamada_kawai_layout`. Layout Function to use. Applies only when not using `use_buscoords`.
-
-* `use_buscoords::Bool`
-
-    Default: `false`. If true, `spring_layout` will be used instead of `layout_engine`.
-
-* `apply_spring_layout::Bool`
-
-    Default: `false`. If true, `spring_layout` will be applied after `layout_engine` to ensure separation of overlapping nodes.
-
-* `spring_const::Float64`
-
-    Default: `1e-3`. Spring constant to be used by `spring_layout`.
-
-* `kwargs`
-
-    Keyword arguments to be used in `layout_engine`.
+    `graph::InfrastructureGraph`: Network graph
+    `layout_engine`: Layout Function to use. Applies only when not using `use_coordinates`
+    `use_coordinates::Bool`: If `true`, `spring_layout` will be used instead of `layout_engine`
+    `apply_spring_layout::Bool`: If `true`, `spring_layout` will be applied after `layout_engine` to ensure separation of overlapping nodes
+    `spring_constant::Real`: Spring constant to be used by `spring_layout`
+    `kwargs`: Keyword arguments to be used in `layout_engine`
 """
-function layout_graph!(graph::PowerModelsGraph{T}, layout_engine=kamada_kawai_layout;
+function layout_graph!(graph::InfrastructureGraph{T}, layout_engine::Function=kamada_kawai_layout;
                        use_coordinates::Bool=false,
                        apply_spring_layout::Bool=false,
                        spring_constant::Real=default_spring_constant,

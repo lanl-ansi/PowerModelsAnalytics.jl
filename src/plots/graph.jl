@@ -1,64 +1,36 @@
 """
-    plot_graph(graph; kwargs...)
+    `fig = plot_graph(graph::InfrastructureGraph; kwargs...)`
 
-Plots a graph. Returns `Plots.AbstractPlot`.
+    Plots a graph. Returns `Plots.AbstractPlot`.
 
-# Parameters
+    Arguments:
 
-* `graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}`
+    `graph::InfrastructureGraph{<:LightGraphs.AbstractGraph}`: Network graph
+    `label_nodes::Bool`: Plot labels on nodes
+    `label_edges::Bool`: Plot labels on edges
+    `fontsize::Real`: Fontsize of labels
+    `fontfamily::String`: Font Family of labels
+    `fontcolor::Union{Symbol,<:Colors.Colorant}`: Color of the labels
+    `textalign::Symbol`: Alignment of text
+    `plot_size::Tuple{Int,Int}`: Size of the plot in pixels
+    `plot_dpi::Int`: Dots-per-inch of the plot
 
-    Network graph
+    Returns:
 
-* `label_nodes::Bool`
-
-    Default: `false`. Plot labels on nodes.
-
-* `label_edges::Bool`
-
-    Default: `false`. Plot labels on edges.
-
-* `fontsize::Real`
-
-    Default: `12`. Fontsize of labels.
-
-* `fontfamily::String`
-
-    Default: `"Arial"`. Font Family of labels.
-
-* `fontcolor::Union{Symbol,<:Colors.AbstractRGB}`
-
-    Default: `:black`. Color of the labels.
-
-* `textalign::Symbol`
-
-    Default: `:center`. Alignment of text.
-
-* `plot_size::Tuple{Int,Int}`
-
-    Default: `(300, 300)`. Size of the plot in pixels.
-
-* `dpi::Int`
-
-    Default: `100`. Dots-per-inch of the plot.
-
-# Returns
-
-* `fig<:Plots.AbstractPlot`
-
-    Plots.jl figure
+    `fig<:Plots.AbstractPlot`: Plots.jl figure
 """
-function plot_graph(graph::PowerModelsGraph{T};
-                    label_nodes=false,
-                    label_edges=false,
-                    fontsize=2,
-                    fontfamily="Arial",
-                    fontcolor=:black,
-                    textalign=:center,
-                    plot_size=(600,600),
-                    dpi=300,
+function plot_graph(graph::InfrastructureGraph{T};
+                    label_nodes::Bool=false,
+                    label_edges::Bool=false,
+                    fontsize::Real=default_fontsize,
+                    fontfamily::String=default_fontfamily,
+                    fontcolor::Union{Symbol,Colors.Colorant}=default_fontcolor,
+                    textalign::Symbol=default_textalign,
+                    plot_size::Tuple{Int,Int}=default_plot_size,
+                    plot_dpi::Int=default_plot_dpi,
                     kwargs...) where T <: LightGraphs.AbstractGraph
 
-    fig = Plots.plot(legend=false, xaxis=false, yaxis=false, grid=false, size=plot_size, dpi=dpi)
+    fig = Plots.plot(legend=false, xaxis=false, yaxis=false, grid=false, size=plot_size, dpi=plot_dpi)
 
     nodes = Dict(node => [get_property(graph, node, :x, 0.0), get_property(graph, node, :y, 0.0)] for node in vertices(graph))
     node_keys = sort(collect(keys(nodes)))
