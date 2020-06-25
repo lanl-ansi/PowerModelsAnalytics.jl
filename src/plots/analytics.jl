@@ -90,3 +90,55 @@ function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{St
 
     Plots.savefig(file)
 end
+
+
+""
+function plot_load_summary(file::String, mn_case::Dict{String,<:Any}; log_scale::Bool=false, plot_intermediate_frames::Bool=false, legend_position::Symbol=:best, generators::Dict{String,<:String}=Dict{String,String}("generator"=>"pg", "solar"=>"pg", "voltage_source"=>"pg","storage"=>"ps"))
+    @assert Int(get(mn_case, "data_model", 1)) == 0
+
+    x = 1:length(mn_case["nw"])
+    total_generated = [sum(sum(get(gen_obj, gen_key, 0.0)) for (gen_type, gen_key) in generators for (_,gen_obj) in get(mn_case["nw"]["$i"], gen_type, Dict())) for i in x]
+    total_load_served = [sum(sum(get(load, "pd", 0.0)) for (_,load) in get(mn_case["nw"]["$i"], "load", Dict())) for i in x]
+    total_load_forecast = [sum(sum(get(load, "pd_nom", 0.0)) for (_,load) in get(mn_case["nw"]["$i"], "load", Dict())) for i in x]
+
+    max_digits = maximum([length(n) for (n,_) in mn_case["nw"]])
+
+    power_scale_factor = mn_case["settings"]["power_scale_factor"]
+    units_str = power_scale_factor == 1.0 ? "W" : power_scale_factor == 1e3 ? "kW" : power_scale_factor == 1e6 ? "MW" : "$power_scale_factor W"
+
+    if plot_intermediate_frames
+        for i in x
+            Plots.plot(x[1:i], total_generated[1:i], label="Total Generation", legend=legend_position, xlims=[x[1], x[end]])
+            Plots.plot!(x[1:i], total_load_served[1:i], label="Total Load Served", legend=legend_position)
+            Plots.plot!(x[1:i], total_load_forecast[1:i], label="Total Load Forecasted", legend=legend_position)
+
+            Plots.xaxis!("Step")
+            if log_scale
+                Plots.yaxis!("Power ($units_str)", :log10)
+            else
+                Plots.yaxis!("Power ($units_str)")
+            end
+
+            filename_parts = split(file, ".")
+            filename = join(filename_parts[1:end-1], ".")
+            ext = filename_parts[end]
+
+            fileout = "$(filename)_$(lpad(i, max_digits, "0")).$(ext)"
+
+            Plots.savefig(fileout)
+        end
+    end
+
+    Plots.plot(x, total_generated, label="Total Generation", legend=:bottomright)
+    Plots.plot!(x, total_load_served, label="Total Load Served", legend=:bottomright)
+    Plots.plot!(x, total_load_forecast, label="Total Load Forecasted", legend=:bottomright)
+
+    Plots.xaxis!("Step")
+    if log_scale
+        Plots.yaxis!("Power ($units_str)", :log10)
+    else
+        Plots.yaxis!("Power ($units_str)")
+    end
+
+    Plots.savefig(file)
+end

@@ -1,108 +1,54 @@
 """
-    plot_network(graph; kwargs...)
+    `plot_network(graph; kwargs...)`
 
-Plots a network `graph`. Returns `PowerModelsGraph` and `Plots.AbstractPlot`.
+    Plots a network `graph`. Returns `PowerModelsGraph` and `Plots.AbstractPlot`.
 
-# Parameters
+    Arguments:
 
-* `graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}`
+    `graph::PowerModelsGraph{<:LightGraphs.AbstractGraph}`: Network graph
+    `filename::String`: File to output the plot to, will use user-set Plots.jl backend
+    `label_nodes::Bool`: Plot labels on nodes
+    `label_edges::Bool`: Plot labels on edges
+    `colors::Dict{String,<:Colors.Colorant}`: Changes to default colors, see `default_colors` for available components
+    `load_color_range::Vector{<:Colors.Colorant}}`: Range of colors for load statuses
+    `node_size_limits::Vector{<:Real}`: Min/Max values for the size of nodes
+    `edge_width_limits::Vector{<:Real}`: Min/Max values for the width of edges
+    `positions::Union{Dict{Int,<:Real}, PowerModelsGraph}`: Used to specify node locations of graph (avoids running layout algorithm every time)
+    `use_coordinates::Bool`: Use buscoord field on buses for node positions
+    `spring_constant::Real`: Only used if buscoords=true. Spring constant to be used to force-direct-layout buses with no buscoord field
+    `apply_spring_layout::Bool`: Apply spring layout after initial layout
+    `fontsize::Real`: Fontsize of labels
+    `fontfamily::String`: Font Family of labels
+    `fontcolor::Union{Symbol,<:Colors.Colorant}`: Color of the labels
+    `textalign::Symbol`: Alignment of text
+    `plot_size::Tuple{Int,Int}`: Size of the plot in pixels
+    `plot_dpi::Int`: Dots-per-inch of the plot
 
-    Network graph
+    Returns:
 
-* `filename::Union{Nothing,String}`
-
-    Default: `nothing`. File to output the plot to, will use user-set Plots.jl backend.
-
-* `label_nodes::Bool`
-
-    Default: `false`. Plot labels on nodes.
-
-* `label_edges::Bool`
-
-    Default: `false`. Plot labels on edges.
-
-* `colors::Dict{String,<:Colors.AbstractRGB}`
-
-    Default: `Dict()`. Changes to default colors, see `default_colors` for available components.
-
-* `load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}`
-
-    Default: `nothing`. Range of colors for load statuses to be displayed in.
-
-* `node_size_lims::Array`
-
-    Default: `[10, 25]`. Min/Max values for the size of nodes.
-
-* `edge_width_lims::Array`
-
-    Default: `[1, 2.5]`. Min/Max values for the width of edges.
-
-* `positions::Union{Dict, PowerModelsGraph}`
-
-    Default: `Dict()`. Used to specify node locations of graph (avoids running layout algorithm every time).
-
-* `use_buscoords::Bool`
-
-    Default: `false`. Use buscoord field on buses for node positions.
-
-* `spring_const::Float64`
-
-    Default: `1e-3`. Only used if buscoords=true. Spring constant to be used to force-direct-layout buses with no buscoord field.
-
-* `apply_spring_layout::Bool`
-
-    Default: `false`. Apply spring layout after initial layout.
-
-* `fontsize::Real`
-
-    Default: `12`. Fontsize of labels.
-
-* `fontfamily::String`
-
-    Default: `"Arial"`. Font Family of labels.
-
-* `fontcolor::Union{Symbol,<:Colors.AbstractRGB}`
-
-    Default: `:black`. Color of the labels.
-
-* `textalign::Symbol`
-
-    Default: `:center`. Alignment of text.
-
-* `plot_size::Tuple{Int,Int}`
-
-    Default: `(300, 300)`. Size of the plot in pixels.
-
-* `dpi::Int`
-
-    Default: `100`. Dots-per-inch of the plot.
-
-# Returns
-
-* `graph::PowerModelsGraph`
-
-    PowerModelsGraph of the network
+    `graph::PowerModelsGraph`: PowerModelsGraph of the network
 """
 function plot_network(graph::PowerModelsGraph{T};
-                      filename::Union{Nothing,String}=nothing,
-                      label_nodes::Bool=false,
-                      label_edges::Bool=false,
-                      colors::Dict{String,<:Colors.Colorant}=Dict{String,Colors.Colorant}(),
-                      load_color_range::Union{Nothing,Vector{<:Colors.AbstractRGB}}=nothing,
-                      node_size_lims::Array=[2, 2.5],
-                      edge_width_lims::Array=[0.5, 0.75],
-                      positions::Union{Dict,PowerModelsGraph}=Dict(),
-                      use_buscoords::Bool=false,
-                      spring_const::Float64=2e-1,
-                      apply_spring_layout::Bool=true,
-                      fontsize::Real=1,
-                      fontfamily::String="Arial",
-                      fontcolor::Union{Symbol,<:Colors.Colorant}=:black,
-                      textalign::Symbol=:center,
-                      plot_size::Tuple{Int,Int}=(300,300),
-                      dpi::Int=100) where T <: LightGraphs.AbstractGraph
+    filename::String="",
+    label_nodes::Bool=false,
+    label_edges::Bool=false,
+    colors::Dict{String,<:Colors.Colorant}=default_colors,
+    color_range::Vector{<:Colors.Colorant}=default_color_range,
+    node_size_limits::Vector{<:Real}=default_node_size_limits,
+    edge_width_limits::Vector{<:Real}=default_edge_width_limits,
+    positions::Union{Dict{Int,<:Real},PowerModelsGraph}=Dict{Int,Real}(),
+    use_coordinates::Bool=false,
+    spring_constant::Real=default_spring_constant,
+    apply_spring_layout::Bool=false,
+    fontsize::Real=default_fontsize,
+    fontfamily::String=default_fontfamily,
+    fontcolor::Union{Symbol,<:Colors.Colorant}=default_fontcolor,
+    textalign::Symbol=default_textalign,
+    plot_size::Tuple{<:Int,<:Int}=default_plot_size,
+    dpi::Int=default_plot_dpi
+    ) where T <: LightGraphs.AbstractGraph
 
-    apply_plot_network_metadata!(graph; colors=colors, load_color_range=load_color_range, node_size_lims=node_size_lims, edge_width_lims=edge_width_lims)
+    apply_plot_network_metadata!(graph; colors=colors, color_range=color_range, node_size_limits=node_size_limits, edge_width_limits=edge_width_limits)
 
     # Graph Layout
     if isa(positions, PowerModelsGraph)
@@ -114,16 +60,24 @@ function plot_network(graph::PowerModelsGraph{T};
     end
 
     if !all(hasprop(graph, node, :x) && hasprop(graph, node, :y) for node in vertices(graph))
-        layout_graph!(graph, kamada_kawai_layout; use_buscoords=use_buscoords, apply_spring_layout=apply_spring_layout, spring_const=spring_const)
+        layout_graph!(graph, kamada_kawai_layout; use_coordinates=use_coordinates, apply_spring_layout=apply_spring_layout, spring_constant=spring_constant)
     end
 
     # Plot
-    fig = plot_graph(graph; label_nodes=label_nodes, label_edges=label_edges, fontsize=fontsize, fontfamily=fontfamily, fontcolor=fontcolor, textalign=textalign, plot_size=plot_size, dpi=dpi)
+    fig = plot_graph(graph;
+        label_nodes=label_nodes,
+        label_edges=label_edges,
+        fontsize=fontsize,
+        fontfamily=fontfamily,
+        fontcolor=fontcolor,
+        textalign=textalign,
+        plot_size=plot_size,
+        dpi=dpi)
 
-    if !isnothing(filename)
-        Plots.savefig(fig, filename)
-    else
+    if isempty(filename)
         Plots.display(fig)
+    else
+        Plots.savefig(fig, filename)
     end
 
     return graph
@@ -319,7 +273,12 @@ function plot_load_blocks(case::Dict{String,Any};
                           switch::String="breaker",
                           positions::Union{Dict,PowerModelsGraph}=Dict(),
                           kwargs...)
-    graph = build_graph_load_blocks(case; edge_types=edge_types, gen_types=gen_types, exclude_gens=exclude_gens, switch=switch)
+
+    if Int(get(case, "data_model", 1)) == 0
+        graph = build_graph_load_blocks_eng(case; edge_types=edge_types, node_objects=node_objects)
+    else
+        graph = build_graph_load_blocks(case; edge_types=edge_types, gen_types=gen_types, exclude_gens=exclude_gens, switch=switch)
+    end
 
     if isa(positions, PowerModelsGraph)
         positions = Dict(node => [get_property(positions, node, :x, 0.0), get_property(positions, node, :y, 0.0)] for node in vertices(positions))

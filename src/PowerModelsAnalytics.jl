@@ -26,10 +26,10 @@ module PowerModelsAnalytics
     end
 
     include("core/types.jl")  # must be first to properly define new types
+    include("core/options.jl")
 
     include("core/data.jl")
     include("core/parameters.jl")
-    include("core/options.jl")
 
     include("graph/common.jl")
     include("graph/metrics.jl")

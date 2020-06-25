@@ -64,54 +64,69 @@ end
 
 
 ""
-function identify_blocks(case::Dict{String,<:Any})::Dict{Int,Set{Any}}
-    cc = calc_connected_components(case)
+function identify_blocks(case::Dict{String,<:Any}; node_settings::Dict{String,<:Any}=default_node_settings_math, edge_settings::Dict{String,<:Any}=default_edge_settings_math)::Dict{Int,Set{Any}}
+    cc = calc_connected_components(case; node_settings=node_settings, edge_settings=edge_settings)
 
     return Dict{Int,Set{Any}}(i => s for (i,s) in enumerate(cc))
 end
 
 
 ""
-function calc_connected_components(data::Dict{String,<:Any}; edges=["line", "transformer", "switch"])::Set{Set{Any}}
-    active_bus = Dict{Any,Dict{String,Any}}(x for x in data["bus"] if Int(x.second["status"]) == 1)
-    active_bus_ids = Set{Any}([i for (i,bus) in active_bus])
+function calc_connected_components(data::Dict{String,<:Any}; node_settings::Dict{String,<:Any}=default_node_settings_math, edge_settings::Dict{String,<:Any}=default_edge_settings_math)::Set{Set{Any}}
+    if Int(get(data, "data_model", 1)) == 0
+        if node_settings == default_node_settings_math
+            node_settings = default_node_settings_eng
+        end
 
-    neighbors = Dict{Any,Vector{Any}}(i => [] for i in active_bus_ids)
-    for edge_type in edges
-        for (id, edge_obj) in get(data, edge_type, Dict{Any,Dict{String,Any}}())
-            if edge_type == "switch"
-                status = Int(edge_obj["status"]) == 1 && Int(edge_obj["state"]) == 1
-                if status
-                    push!(neighbors[edge_obj["f_bus"]], edge_obj["t_bus"])
-                    push!(neighbors[edge_obj["t_bus"]], edge_obj["f_bus"])
-                end
-            else
-                status = Int(edge_obj["status"]) == 1
-                if status
-                    if edge_type == "line" || (edge_type == "transformer" && haskey(edge_obj, "f_bus") && haskey(edge_obj, "t_bus"))
-                        push!(neighbors[edge_obj["f_bus"]], edge_obj["t_bus"])
-                        push!(neighbors[edge_obj["t_bus"]], edge_obj["f_bus"])
-                    else
-                        for f_bus in edge_obj["bus"]
-                            for t_bus in edge_obj["bus"]
-                                if f_bus != t_bus
-                                    push!(neighbors[f_bus], t_bus)
-                                    push!(neighbors[t_bus], f_bus)
-                                end
+        if edge_settings == default_edge_settings_math
+            edge_settings = default_edge_settings_eng
+        end
+    end
+
+    active_node = Dict{Any,Dict{String,Any}}(x for x in data[get(node_settings, "node", "bus")] if Int(x.second[get(node_settings, "disabled", "bus_type" => 4)[1]]) != get(node_settings, "disabled", "bus_type" => 4))
+    active_node_ids = Set{Any}([i for (i,node) in active_node])
+
+    neighbors = Dict{Any,Vector{Any}}(i => [] for i in active_node_ids)
+    for (type, settings) in edge_settings
+        for (id, obj) in get(data, type, Dict{Any,Dict{String,Any}}())
+            (disabled_key, disabled_value) = get(settings, "disabled", "status" => 0)
+            (open_key, open_value) = get(settings, "open", "state" => 0)
+
+            f_key = get(settings, "fr_node", "f_bus")
+            t_key = get(settings, "to_node", "t_bus")
+            nodes_key = get(settings, "nodes", "")
+
+            status = Int(get(obj, disabled_key, 1)) != disabled_value && Int(get(obj, open_key, 1)) != open_value
+
+            if status
+                if !isempty(nodes_key) && haskey(obj, nodes_key)
+                    edges_set = Set{Any}()
+                    for f_node in obj[nodes_key]
+                        for t_node in obj[nodes_key]
+                            if f_node != t_node
+                                push!(edges_set, Set([f_node, t_node]))
                             end
                         end
                     end
+
+                    for (f_node, t_node) in edges_set
+                        push!(neighbors["$f_node"], "$t_node")
+                        push!(neighbors["$t_node"], "$f_node")
+                    end
+                else
+                    push!(neighbors["$(obj[f_key])"], "$(obj[t_key])")
+                    push!(neighbors["$(obj[t_key])"], "$(obj[f_key])")
                 end
             end
         end
     end
 
-    component_lookup = Dict(i => Set{Any}([i]) for i in active_bus_ids)
+    component_lookup = Dict(i => Set{Any}([i]) for i in active_node_ids)
     touched = Set{Any}()
 
-    for i in active_bus_ids
+    for i in active_node_ids
         if !(i in touched)
-            PowerModels._cc_dfs(i, neighbors, component_lookup, touched)
+            _cc_dfs(i, neighbors, component_lookup, touched)
         end
     end
 
@@ -121,13 +136,56 @@ function calc_connected_components(data::Dict{String,<:Any}; edges=["line", "tra
 end
 
 
-""
-function is_energized(case::Dict{String,<:Any}, block::Set{<:Any})::Bool
-    for bus in block
-        for gen_type in ["voltage_source", "generator", "solar", "storage"]
-            for (_,obj) in get(case, gen_type, Dict{Any,Dict{String,Any}}())
-                if bus == obj["bus"] && Int(obj["status"]) == 1
-                    return true
+"DFS on a graph"
+function _cc_dfs(i, neighbors, component_lookup, touched)
+    push!(touched, i)
+    for j in neighbors[i]
+        if !(j in touched)
+            for k in  component_lookup[j]
+                push!(component_lookup[i], k)
+            end
+            for k in component_lookup[j]
+                component_lookup[k] = component_lookup[i]
+            end
+            _cc_dfs(j, neighbors, component_lookup, touched)
+        end
+    end
+end
+
+
+"""
+    `ans = is_active`
+
+    Determines if block is "active", e.g. energized, based on criteria in `sources`
+
+    Arguements:
+
+    `case::Dict{String,<:Any}`: Network case
+    `block::Set{<:Any}`: block of node ids
+    `sources::Dict{String,<:Dict{String,<:Any}}`: sources with settings that define criteria for active
+
+    Returns:
+
+    `ans::Bool`
+"""
+function is_active(case::Dict{String,<:Any}, block::Set{<:Any}; sources::Dict{String,<:Any}=default_sources_math)::Bool
+    if Int(get(case, "data_model", 1)) == 0 && sources == default_sources_math
+        sources = default_sources_eng
+    end
+
+    for node in block
+        for (type,settings) in sources
+            node_key = get(settings, "node", "bus")
+
+            (disabled_key, disabled_value) = get(settings, "disabled", "status" => 0)
+            (inactive_real_key, inactive_real_value) = get(settings, "inactive_real", "" => 0)
+            (inactive_imaginary_key, inactive_imaginary_value) = get(settings, "inactive_imaginary", "" => 0)
+
+            for (_,obj) in get(case, type, Dict{Any,Dict{String,Any}}())
+                if node == obj[node_key] && Int(obj[disabled_key]) != disabled_value
+                    if (!isempty(inactive_real_key) && haskey(obj, inactive_real_key) && any(obj[inactive_real_key] .!= inactive_real_value)) || (!isempty(inactive_imaginary_key) && haskey(obj, inactive_imaginary_key) && any(obj[inactive_imaginary_key] .!= inactive_imaginary_value))
+                        return true
+                    end
                 end
             end
         end
