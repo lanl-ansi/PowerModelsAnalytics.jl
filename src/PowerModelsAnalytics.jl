@@ -1,7 +1,6 @@
 module PowerModelsAnalytics
 
     import InfrastructureModels
-    import PowerModels
 
     import LightGraphs
 
@@ -10,8 +9,10 @@ module PowerModelsAnalytics
     import Colors: @colorant_str
     import ColorVectorSpace
 
-    import Statistics: mean, std
+    import LinearAlgebra: norm
     import Random: rand
+    import Statistics: mean, std
+
 
     import Compat: isnothing
 
