@@ -10,7 +10,7 @@ end
 
 
 """
-    `plot_source_demand_summary(file, result, case; kwargs...)`
+    `plot_load_summary(file, result, case; kwargs...)`
 
     Plots total generation, total load served, and total forecasted load for a given `case` and `result`, saving to `file`
 
