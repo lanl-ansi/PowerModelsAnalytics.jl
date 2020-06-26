@@ -33,7 +33,7 @@ function plot_network(graph::InfrastructureGraph{T};
     label_nodes::Bool=false,
     label_edges::Bool=false,
     colors::Dict{String,<:Colors.Colorant}=default_colors,
-    color_range::Vector{<:Colors.Colorant}=default_color_range,
+    demand_color_range::Vector{<:Colors.Colorant}=default_demand_color_range,
     node_size_limits::Vector{<:Real}=default_node_size_limits,
     edge_width_limits::Vector{<:Real}=default_edge_width_limits,
     positions::Union{Dict{Int,<:Real},InfrastructureGraph}=Dict{Int,Real}(),
@@ -45,11 +45,16 @@ function plot_network(graph::InfrastructureGraph{T};
     fontcolor::Union{Symbol,<:Colors.Colorant}=default_fontcolor,
     textalign::Symbol=default_textalign,
     plot_size::Tuple{<:Int,<:Int}=default_plot_size,
-    dpi::Int=default_plot_dpi,
+    plot_dpi::Int=default_plot_dpi,
     kwargs...
     ) where T <: LightGraphs.AbstractGraph
 
-    apply_plot_network_metadata!(graph; colors=colors, color_range=color_range, node_size_limits=node_size_limits, edge_width_limits=edge_width_limits)
+    apply_plot_network_metadata!(graph;
+        colors=colors,
+        demand_color_range=demand_color_range,
+        node_size_limits=node_size_limits,
+        edge_width_limits=edge_width_limits
+    )
 
     # Graph Layout
     if isa(positions, InfrastructureGraph)
@@ -83,7 +88,7 @@ function plot_network(graph::InfrastructureGraph{T};
         fontcolor=fontcolor,
         textalign=textalign,
         plot_size=plot_size,
-        dpi=dpi
+        plot_dpi=plot_dpi
     )
 
     if isempty(filename)
@@ -125,5 +130,6 @@ function plot_network(case::Dict{String,<:Any}; positions::Union{Dict{Int,<:Any}
     end
 
     graph = plot_network(graph; kwargs...)
+
     return graph
 end
