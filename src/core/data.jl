@@ -182,7 +182,8 @@ function is_active(case::Dict{String,<:Any}, block::Set{<:Any}; sources::Dict{St
             (inactive_imaginary_key, inactive_imaginary_value) = get(settings, "inactive_imaginary", "" => 0)
 
             for (_,obj) in get(case, type, Dict{Any,Dict{String,Any}}())
-                if node == obj[node_key] && Int(obj[disabled_key]) != disabled_value
+
+                if node == obj[node_key] && isa(obj[disabled_key], Enum) ? Int(obj[disabled_key]) != disabled_value : obj[disabled_key] != disabled_value
                     if (!isempty(inactive_real_key) && haskey(obj, inactive_real_key) && any(obj[inactive_real_key] .!= inactive_real_value)) || (!isempty(inactive_imaginary_key) && haskey(obj, inactive_imaginary_key) && any(obj[inactive_imaginary_key] .!= inactive_imaginary_value))
                         return true
                     end
