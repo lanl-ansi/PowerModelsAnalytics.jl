@@ -13,7 +13,7 @@
 """
 function apply_plot_network_metadata!(graph::InfrastructureGraph{T};
     colors::Dict{String,<:Colors.Colorant}=default_colors,
-    color_range::Vector{<:Colors.AbstractRGB}=default_color_range,
+    demand_color_range::Vector{<:Colors.Colorant}=default_demand_color_range,
     node_size_limits::Vector{<:Real}=default_node_size_limits,
     edge_width_limits::Vector{<:Real}=default_edge_width_limits
     ) where T <: LightGraphs.AbstractGraph
@@ -31,22 +31,12 @@ function apply_plot_network_metadata!(graph::InfrastructureGraph{T};
         set_property!(graph, node, :node_size, node_size_limits[1])
         if hasprop(graph, node, :size)
             set_property!(graph, node, :node_size, get_property(graph, node, :size, 0.0))
-        elseif hasprop(graph, node, :active_power)
-            active_powers = [(node, get_property(graph, node, :active_power, 0.0)) for node in vertices(graph) if hasprop(graph, node, :active_power)]
-            reactive_powers = [(node, get_property(graph, node, :reactive_power, 0.0)) for node in vertices(graph) if hasprop(graph, node, :reactive_power)]
-            pmin, pmax = length(active_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0, length(active_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in active_powers])) : 0.0
-            qmin, qmax = length(reactive_powers) > 0 ? minimum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0, length(reactive_powers) > 0 ? maximum(filter(!isnan,Float64[v[2] for v in reactive_powers])) : 0.0
-            if any(abs.([pmin, pmax, qmin, qmax]) .> 0)
-                    amin, amax = minimum(filter(!isnan,Float64[pmin, qmin])), maximum(filter(!isnan,Float64[pmax, qmax]))
-                for (node, value) in active_powers
-                    set_property!(graph, node, :node_size, (value - amin) / (amax - amin) * (node_size_limits[2] - node_size_limits[1]) + node_size_limits[1])
-                end
-            end
         end
 
-        if hasprop(graph, node, :load_status)
-            load_status = get_property(graph, node, :load_status, 11)
-            set_property!(graph, node, :node_color, occursin("disabled", node_membership) || occursin("wo demand", node_membership) ? colors[node_membership] : color_range[load_status])
+        if hasprop(graph, node, :demand)
+            demand = get_property(graph, node, :demand, 1.0)
+            idx = trunc(Int, demand * (length(demand_color_range) - 1) + 1)
+            set_property!(graph, node, :node_color, occursin("disabled", node_membership) || occursin("wo demand", node_membership) ? colors[node_membership] : demand_color_range[idx])
         end
     end
 
@@ -192,25 +182,31 @@ function build_network_graph(case::Dict{String,<:Any};
         end
     end
 
+    used_extra_f_verts = Dict{Int,Int}()
     for (type, settings) in extra_nodes
         extra_node_key = get(settings, "node", "bus")
-        @warn type settings extra_node_key
         (disabled_key, disabled_value) = get(settings, "disabled", "status" => 0)
         (inactive_real_key, inactive_real_value) = get(settings, "inactive_real", "" => 0)
         (inactive_imaginary_key, inactive_imaginary_value) = get(settings, "inactive_imaginary", "" => 0)
 
         for (id, obj) in get(case, type, Dict())
             f_vert = node2graph_map["$(obj[extra_node_key])"]
-            t_vert = extra_node2graph_map[type][id]
+            t_vert = aggregate_extra_nodes && f_vert in keys(used_extra_f_verts) ? used_extra_f_verts[f_vert] : extra_node2graph_map[type][id]
 
-            add_edge!(graph, f_vert, t_vert)
-            edge_props = Dict{Symbol,Any}(
-                :label => "",
-                :edge_membership => "connector",
-            )
-            set_properties!(graph, LightGraphs.Edge(f_vert, t_vert), edge_props)
+            if !(aggregate_extra_nodes && f_vert in keys(used_extra_f_verts))
+                add_edge!(graph, f_vert, t_vert)
+                edge_props = Dict{Symbol,Any}(
+                    :label => "",
+                    :edge_membership => "connector",
+                )
+                set_properties!(graph, LightGraphs.Edge(f_vert, t_vert), edge_props)
+            end
 
-            disabled = Int(get(obj, disabled_key, 1)) == disabled_value ? "disabled" : "enabled"
+            if isa(get(obj, disabled_key, 1), Enum)
+                disabled = Int(get(obj, disabled_key, 1)) == disabled_value ? "disabled" : "enabled"
+            else
+                disabled = get(obj, disabled_key, 1) == disabled_value ? "disabled" : "enabled"
+            end
 
             real_inactive = !isempty(inactive_real_key) && haskey(obj, inactive_real_key) && all(obj[inactive_real_key] .== inactive_real_value)
             imaginary_inactive = !isempty(inactive_imaginary_key) && haskey(obj, inactive_imaginary_key) && all(obj[inactive_imaginary_key] .== inactive_imaginary_value)
@@ -229,11 +225,29 @@ function build_network_graph(case::Dict{String,<:Any};
                 node_props[:size] = sum(get(obj, settings["size"], 0.0))
             end
 
+            if aggregate_extra_nodes && f_vert in keys(used_extra_f_verts)
+                _node_membership = get_property(graph, t_vert, :node_membership, "")
+                _label = get_property(graph, t_vert, :label, "")
+                _force_label = get_property(graph, t_vert, :force_label, false)
+
+                _inactive = inactive == "active" || occursin(" active", _node_membership) ? "active" : "inactive"
+                _disabled = disabled == "enabled" || startswith(_node_membership, "enabled") ? "enabled" : "disabled"
+
+                node_props[:node_membership] = "$_disabled $_inactive extra node"
+                node_props[:label] = node_props[:label] != _label ? join([node_props[:label], _label], ",") : node_props[:label]
+                node_props[:force_label] = any([node_props[:force_label], _force_label])
+
+                if haskey(node_props, :size)
+                    _size = get_property(graph, t_vert, :size, 0.0)
+                    node_props[:size] += _size
+                end
+            end
+
             set_properties!(graph, t_vert, node_props)
+            used_extra_f_verts[f_vert] = t_vert
         end
     end
 
-    # Adds node coordinates if present
     if !block_graph && !isempty(node_x_key) && !isempty(node_y_key)
         for (node, vert) in node2graph_map
             obj = case[node_key][node]
@@ -277,29 +291,40 @@ function build_network_graph(case::Dict{String,<:Any};
         end
     end
 
-    node_demand_status = Dict{Any,Vector{Real}}(obj[get(settings, "node", "bus")] => Vector{Real}() for (type,settings) in demands for (_,obj) in get(case, type, Dict()))
+    _node_demand_status = Dict{Any,Vector{Real}}(obj[get(settings, "node", "bus")] => Vector{Real}() for (type,settings) in demands for (_,obj) in get(case, type, Dict()))
     for (type, settings) in demands
         demand_node_key = get(settings, "node", "bus")
         demand_status_key = get(settings, "status", "status")
 
         for (_,obj) in get(case, type, Dict())
             demand_status = get(obj, demand_status_key, 0)
-            push!(node_demand_status[obj[demand_node_key]], isa(demand_status, Enum) ? Int(demand_status) : demand_status)
+            push!(_node_demand_status[obj[demand_node_key]], isa(demand_status, Enum) ? Int(demand_status) : demand_status)
         end
-        node_demand_status = Dict{Any,Real}(id => sum(v) / length(v) for (id, v) in node_demand_status if !isempty(v))
+
 
         if block_graph
-            node_demand_status = Dict{Int,Real}(block_id => sum([get(node_demand_status, node, 0.0) for node in block]) for (block_id, block) in blocks)
+            node_demand_status = Dict{Int,Real}()
+            for (block_id, block) in blocks
+                block_demand = []
+                for node in block
+                    if node in keys(_node_demand_status)
+                        append!(block_demand, _node_demand_status[node])
+                    end
+                end
+
+                if !isempty(block_demand)
+                    node_demand_status[block_id] = sum(block_demand) / length(block_demand)
+                end
+            end
+        else
+            node_demand_status = Dict{Any,Real}(id => sum(v) / length(v) for (id, v) in _node_demand_status if !isempty(v))
         end
 
         for (id, status) in node_demand_status
-            node_props = Dict{Symbol,Any}(
-                :demand_status => trunc(Int, status * 10) + 1  # TODO: make generic
-            )
             if block_graph
-                set_properties!(graph, id, node_props)
+                set_property!(graph, id, :demand, status)
             else
-                set_properties!(graph, node2graph_map["$id"], node_props)
+                set_property!(graph, node2graph_map["$id"], :demand, status)
             end
         end
     end
