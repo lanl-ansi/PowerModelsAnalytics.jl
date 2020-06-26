@@ -22,7 +22,7 @@ const default_colors = Dict{String,Colors.Colorant}(
 )
 
 "default color range for partially loaded buses"
-const default_color_range = Colors.range(default_colors["disabled node w demand"], default_colors["enabled node w demand"], length=11)
+const default_demand_color_range = Colors.range(default_colors["disabled node w demand"], default_colors["enabled node w demand"], length=11)
 
 "default edge types for eng data structure"
 const default_edge_settings_eng = Dict{String,Any}(
@@ -129,7 +129,7 @@ const default_extra_nodes_math = Dict{String,Any}(
     )
 )
 
-""
+"default node information for math model (PowerModels, PowerModelsDistribution)"
 const default_node_settings_math = Dict{String,Any}(
     "node" => "bus",
     "disabled" => "bus_type" => 4,
@@ -137,17 +137,15 @@ const default_node_settings_math = Dict{String,Any}(
     "y" => "lat",
 )
 
-""
+"default node information for eng model (PowerModelsDistribution)"
 const default_node_settings_eng = Dict{String,Any}(
     "node" => "bus",
-    "fr_node" => "f_bus",
-    "to_node" => "t_bus",
     "disabled" => "status" => 0,
     "x" => "lon",
     "y" => "lat"
 )
 
-""
+"default sources (generators) for the math model (PowerModels,PowerModelsDistribution)"
 const default_sources_math = Dict{String,Any}(
     "gen" => Dict{String,Any}(
         "node" => "gen_bus",
@@ -163,7 +161,7 @@ const default_sources_math = Dict{String,Any}(
     )
 )
 
-""
+"default sources (generators) for the eng model (PowerModelsDistribution)"
 const default_sources_eng = Dict{String,Any}(
     "generator" => Dict{String,Any}(
         "node" => "bus",
@@ -191,18 +189,20 @@ const default_sources_eng = Dict{String,Any}(
     ),
 )
 
-""
+"default demands (loads) for eng model (PowerModelsDistribution)"
 const default_demands_eng = Dict{String,Any}(
     "load" => Dict{String,Any}(
         "node" => "bus",
         "disabled" => "status" => 0,
         "inactive_real" => "pd" => 0,
         "inactive_imaginary" => "qd" => 0,
+        "original_demand_real" => "pd_nom",
+        "original_demand_imaginary" => "qd_nom",
         "status" => "status"
     )
 )
 
-""
+"default demands (loads) for math model (PowerModels, PowerModelsDistribution)"
 const default_demands_math = Dict{String,Any}(
     "load" => Dict{String,Any}(
         "node" => "load_bus",
@@ -213,20 +213,29 @@ const default_demands_math = Dict{String,Any}(
     )
 )
 
+"default dpi of plots"
 const default_plot_dpi = 100
 
+"default size of plots in pixels"
 const default_plot_size = Tuple{Int,Int}((300,300))
 
-const default_fontsize = 2
+"default fontsize in pt"
+const default_fontsize = 10
 
+"default fontcolor"
 const default_fontcolor = :black
 
-const default_fontfamily = "Arial"
+"default fontfamily"
+const default_fontfamily = "Times"
 
+"default text alignemtn"
 const default_textalign = :center
 
+"default upper and lower bound of the size of nodes"
 const default_node_size_limits = Vector{Real}([2, 2.5])
 
+"default upper and lower bound of the width of edges"
 const default_edge_width_limits = Vector{Real}([0.5, 0.75])
 
+"default spring constant for spring_layout"
 const default_spring_constant = 0.2
