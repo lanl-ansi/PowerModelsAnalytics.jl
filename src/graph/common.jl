@@ -136,7 +136,7 @@ function build_network_graph(case::Dict{String,<:Any};
             end
         end
     else
-    n_extra_nodes = sum(Int[length(get(case, type, Dict())) for type in keys(extra_nodes)])
+        n_extra_nodes = sum(Int[length(get(case, type, Dict())) for type in keys(extra_nodes)])
     end
 
     # Generate blank graph
@@ -156,7 +156,7 @@ function build_network_graph(case::Dict{String,<:Any};
                     extra_node2graph_map[type][id] = used_nodes[node2graph_map["$(obj[get(settings, "node", "bus")])"]]
                 end
             else
-            n += 1
+                n += 1
                 extra_node2graph_map[type][id] = n
             end
         end
