@@ -178,7 +178,7 @@ function build_network_graph(case::Dict{String,<:Any};
         for (id,edge) in get(case, type, Dict())
             disabled = Int(get(edge, disabled_key, 1)) == disabled_value ? "disabled" : "enabled"
             open = Int(get(edge, open_key, 1)) == open_value ? "open" : "closed"
-            fixed = Int(get(edge, fixed_key, 1)) == fixed_value ? "fixed" : "free"
+            fixed = Int(get(edge, fixed_key, 0)) == fixed_value ? "fixed" : "free"
 
             edge_props = Dict{Symbol,Any}(
                 :label => id,
