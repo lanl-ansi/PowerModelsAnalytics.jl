@@ -124,17 +124,41 @@ function build_network_graph(case::Dict{String,<:Any};
     end
 
     n_nodes = block_graph ? length(blocks) : length(node2graph_map)
+    if aggregate_extra_nodes
+        used_nodes = Set{Any}()
+        n_extra_nodes = 0
+        for (type,settings) in extra_nodes
+            for (id,obj) in get(case, type, Dict())
+                if !(node2graph_map["$(obj[get(settings, "node", "bus")])"] in used_nodes)
+                    n_extra_nodes += 1
+                    push!(used_nodes, node2graph_map["$(obj[get(settings, "node", "bus")])"])
+                end
+            end
+        end
+    else
     n_extra_nodes = sum(Int[length(get(case, type, Dict())) for type in keys(extra_nodes)])
+    end
 
     # Generate blank graph
     graph = InfrastructureGraph(n_nodes + n_extra_nodes)
 
     extra_node2graph_map = Dict{String,Dict{Any,Int}}(type => Dict{Any,Int}() for type in keys(extra_nodes))
     n = n_nodes
-    for (type,_) in extra_nodes
-        for (id,_) in get(case, type, Dict())
-            extra_node2graph_map[type][id] = n + 1
+    used_nodes = Dict{Any,Int}()
+    for (type,settings) in extra_nodes
+        for (id,obj) in get(case, type, Dict())
+            if aggregate_extra_nodes
+                if !(node2graph_map["$(obj[get(settings, "node", "bus")])"] in keys(used_nodes))
+                    n += 1
+                    extra_node2graph_map[type][id] = n
+                    used_nodes[node2graph_map["$(obj[get(settings, "node", "bus")])"]] = n
+                else
+                    extra_node2graph_map[type][id] = used_nodes[node2graph_map["$(obj[get(settings, "node", "bus")])"]]
+                end
+            else
             n += 1
+                extra_node2graph_map[type][id] = n
+            end
         end
     end
 
