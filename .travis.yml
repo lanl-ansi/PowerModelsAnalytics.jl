@@ -4,7 +4,6 @@ env:
 os:
   - linux
   - osx
-  - windows
 julia:
   - 1.0
   - 1.4
