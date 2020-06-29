@@ -209,7 +209,7 @@ const default_demands_math = Dict{String,Any}(
         "disabled" => "load_status" => 0,
         "inactive_real" => "pd" => 0,
         "inactive_imaginary" => "qd" => 0,
-        "status" => "load_status"
+        "status" => "status"
     )
 )
 

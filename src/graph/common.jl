@@ -282,7 +282,7 @@ function build_network_graph(case::Dict{String,<:Any};
     end
 
     active_blocks = Dict{Int,Bool}(id => is_active(case, block) for (id,block) in blocks)
-    node_has_demand = Dict{Any,Bool}(obj[get(settings, "node", "bus")] => true for (type, settings) in demands for (_,obj) in get(case, type, Dict()))
+    node_has_demand = Dict{Any,Bool}("$(obj[get(settings, "node", "bus")])" => true for (type, settings) in demands for (_,obj) in get(case, type, Dict()))
     block2node_map = block_graph ? Dict{Int,Any}(id => [id] for (id,block) in blocks) : blocks
 
     for (block_id, block) in blocks
@@ -321,10 +321,9 @@ function build_network_graph(case::Dict{String,<:Any};
         demand_status_key = get(settings, "status", "status")
 
         for (_,obj) in get(case, type, Dict())
-            demand_status = get(obj, demand_status_key, 0)
+            demand_status = get(obj, demand_status_key, 1)
             push!(_node_demand_status[obj[demand_node_key]], isa(demand_status, Enum) ? Int(demand_status) : demand_status)
         end
-
 
         if block_graph
             node_demand_status = Dict{Int,Real}()
