@@ -1,7 +1,6 @@
 module PowerModelsAnalytics
 
     import InfrastructureModels
-    import PowerModels
 
     import LightGraphs
 
@@ -10,8 +9,10 @@ module PowerModelsAnalytics
     import Colors: @colorant_str
     import ColorVectorSpace
 
-    import Statistics: mean, std
+    import LinearAlgebra: norm
     import Random: rand
+    import Statistics: mean, std
+
 
     import Compat: isnothing
 
@@ -26,10 +27,10 @@ module PowerModelsAnalytics
     end
 
     include("core/types.jl")  # must be first to properly define new types
+    include("core/options.jl")
 
     include("core/data.jl")
     include("core/parameters.jl")
-    include("core/options.jl")
 
     include("graph/common.jl")
     include("graph/metrics.jl")

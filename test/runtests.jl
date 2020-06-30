@@ -1,9 +1,10 @@
 using PowerModelsAnalytics
 
-import PowerModels
-import PowerModelsDistribution
 import LightGraphs
 import Colors
+
+import PowerModels
+import PowerModelsDistribution
 
 PowerModels.silence()
 
@@ -15,16 +16,16 @@ using Test
     mp_data = PowerModels.parse_file("$(joinpath(dirname(pathof(PowerModels)), ".."))/test/data/matpower/case5.m")
     PowerModelsDistribution.make_multiconductor!(mp_data, 3)
 
-    n_graph = build_graph_network(data)
-    n_graph_load_colors = build_graph_network(data)
-    n_mp_graph = build_graph_network(mp_data)
-    lb_graph = build_graph_load_blocks(data)
-    lb_mp_graph = build_graph_load_blocks(data)
+    n_graph = build_network_graph(data)
+    n_graph_load_colors = build_network_graph(data)
+    n_mp_graph = build_network_graph(mp_data)
+    lb_graph = build_network_graph(data; block_graph=true)
+    lb_mp_graph = build_network_graph(data; block_graph=true)
 
 
     @testset "graphs" begin
         for graph in [n_graph, n_mp_graph, lb_graph, lb_mp_graph]
-            @test isa(graph, PowerModelsGraph{T} where T<:LightGraphs.AbstractGraph)
+            @test isa(graph, InfrastructureGraph{T} where T<:LightGraphs.AbstractGraph)
         end
 
         apply_plot_network_metadata!(n_graph)
@@ -32,8 +33,8 @@ using Test
         @test all(hasprop(n_graph, edge, :edge_color) && hasprop(n_graph, edge, :edge_size) for edge in edges(n_graph))
 
         @testset "load_color_range" begin
-            load_color_range = Colors.range(default_colors["loaded disabled bus"], default_colors["loaded enabled bus"], length=11)
-            @test_nowarn apply_plot_network_metadata!(n_graph_load_colors; load_color_range=load_color_range)
+            load_color_range = Colors.range(default_colors["disabled node w demand"], default_colors["enabled node w demand"], length=11)
+            @test_nowarn apply_plot_network_metadata!(n_graph_load_colors; demand_color_range=load_color_range)
         end
     end
 
