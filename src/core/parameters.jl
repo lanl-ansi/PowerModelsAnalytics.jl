@@ -1,7 +1,7 @@
 ### Checks parameters in PowerModels components ###
 ""
 function parameter_check_summary(data::Dict{String,Any})
-    if InfrastructureModels.ismultinetwork(data)
+    if get(data, "multinetwork", false)
         error("parameter_check_summary does not yet support multinetwork data")
     end
 

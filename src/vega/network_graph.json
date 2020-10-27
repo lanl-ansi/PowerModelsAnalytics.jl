@@ -1,0 +1,134 @@
+{
+    "$schema": "https://vega.github.io/schema/vega/v5.json",
+    "description": "plot network graph",
+    "padding": 5,
+    "autosize": "pad",
+
+    "data": [],
+
+    "scales": [{
+            "name": "x",
+            "type": "linear",
+            "round": true,
+            "nice": true,
+            "zero": true,
+            "domain": {
+                "data": "node-data",
+                "field": "x"
+            },
+            "range": "width"
+        },
+        {
+            "name": "y",
+            "type": "linear",
+            "round": true,
+            "nice": true,
+            "zero": true,
+            "domain": {
+                "data": "node-data",
+                "field": "y"
+            },
+            "range": "height"
+        },
+        {
+            "name": "size",
+            "type": "linear",
+            "round": true,
+            "nice": false,
+            "zero": true,
+            "domain": {
+                "data": "node-data",
+                "field": "size"
+            },
+            "range": [10, 30]
+        },
+        {
+            "name": "width",
+            "type": "linear",
+            "round": true,
+            "nice": false,
+            "zero": true,
+            "domain": {
+                "data": "node-data",
+                "field": "size"
+            },
+            "range": [0.25, 1]
+        }
+
+    ],
+
+    "marks": [{
+            "name": "nodes",
+            "type": "symbol",
+            "zindex": 1,
+
+            "from": {
+                "data": "node-data"
+            },
+
+            "encode": {
+                "enter": {
+                    "fill": {
+                        "field": "color"
+                    },
+                    "stroke": {
+                        "value": "white"
+                    }
+                },
+                "update": {
+                    "x": {
+                        "scale": "x",
+                        "field": "x"
+                    },
+                    "y": {
+                        "scale": "y",
+                        "field": "y"
+                    },
+                    "size": {
+                        "field": "size",
+                        "scale": "size"
+                    }
+                }
+            },
+
+            "transform": [{
+                "type": "force",
+                "iterations": 1,
+                "signal": "force",
+                "static": true,
+                "forces": [{
+                    "force": "link",
+                    "links": "link-data"
+                }]
+            }]
+        },
+        {
+            "type": "path",
+            "from": {
+                "data": "link-data"
+            },
+            "encode": {
+                "enter": {
+                    "stroke": {
+                        "field": "color"
+                    },
+                    "strokeWidth": {
+                        "scale": "width",
+                        "field": "size"
+                    }
+                }
+            },
+            "transform": [{
+                "type": "linkpath",
+                "shape": "line",
+                "require": {
+                    "signal": "force"
+                },
+                "sourceX": "datum.source.x",
+                "sourceY": "datum.source.y",
+                "targetX": "datum.target.x",
+                "targetY": "datum.target.y"
+            }]
+        }
+    ]
+}

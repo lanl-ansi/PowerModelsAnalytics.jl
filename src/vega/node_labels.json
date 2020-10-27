@@ -1,0 +1,26 @@
+{
+    "type": "text",
+    "from": {
+        "data": "node-data"
+    },
+    "encode": {
+        "enter": {
+            "text": {
+                "field": "label"
+            }
+        },
+        "update": {
+            "x": {
+                "scale": "x",
+                "field": "x"
+            },
+            "y": {
+                "scale": "y",
+                "field": "y"
+            },
+            "dx": {
+                "value": 5
+            }
+        }
+    }
+}

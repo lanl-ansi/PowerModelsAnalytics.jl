@@ -217,7 +217,7 @@ const default_demands_math = Dict{String,Any}(
 const default_plot_dpi = 100
 
 "default size of plots in pixels"
-const default_plot_size = Tuple{Int,Int}((300,300))
+const default_plot_size = Tuple{Int,Int}((600,600))
 
 "default fontsize in pt"
 const default_fontsize = 10

@@ -1,11 +1,44 @@
-""
-function plot_branch_impedance(data::Dict{String,Any})
-    r = [branch["br_r"] for (i,branch) in data["branch"]]
-    x = [branch["br_x"] for (i,branch) in data["branch"]]
+"Plots branch impedances"
+function plot_branch_impedance(data::Dict{String,Any}; branch_key::Any="branch", resistance_key::String="br_r", reactance_key::String="br_x")::Vega.VGSpec
+    spec = deepcopy(default_branch_impedance_spec)
 
-    s = Plots.scatter(r, x, xlabel="resistance (p.u.)", ylabel="reactance (p.u.)", label="")
-    r_h = Plots.histogram(r, xlabel="resistance (p.u.)", ylabel="branch count", label="", reuse=false)
-    x_h = Plots.histogram(x, xlabel="reactance (p.u.)", ylabel="branch count", label="", reuse=false)
+    scatter_data = [Dict("resistance" => sum(sum(branch["br_r"])), "reactance" => sum(sum(branch["br_x"])), "id" => id) for (id, branch) in data["branch"]]
+
+    sort!(scatter_data; by=x -> parse(Int, x["id"]))
+
+    @set! spec.data = []
+
+    pushfirst!(spec.data, Dict("name" => "branch-impedances", "values" => scatter_data))
+
+    resistance = Float64[x["resistance"] for x in scatter_data]
+    reactance = Float64[x["reactance"] for x in scatter_data]
+
+    for (field, _data) in zip(["resistance", "reactance"], [resistance, reactance])
+        push!(spec.data, Dict(
+            "name" => "binned-$field",
+            "source" => "branch-impedances",
+            "transform" => [
+                Dict(
+                    "type" => "bin", "field" => field,
+                    "extent" => [minimum(_data), maximum(_data)],
+                    "anchor" => mean(_data),
+                    "step" => std(_data) / 2,
+                    "nice" => true
+                ),
+                Dict(
+                    "type" => "aggregate",
+                    "key" => "bin0",
+                    "groupby" => ["bin0", "bin1"],
+                    "fields" => ["bin0"],
+                    "ops" => ["count"],
+                    "as" => ["count"]
+                )
+            ]
+        )
+        )
+    end
+
+    return spec
 end
 
 
@@ -23,53 +56,88 @@ end
     `intermediate::Bool`: If `true`, plots intermediate steps of plot (for animations).
     `legend_position::Symbol`: Position of legend, accepts the following symbols: `:right`, `:left`, `:top`, `:bottom`, `:inside`, `:best`, `:legend`, `:topright`, `:topleft`, `:bottomleft`, `:bottomright`
 """
-function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{String,Any}; log::Bool=false, intermediate::Bool=false, legend_position::Symbol=:best)
+function plot_load_summary(file::String, result::Dict{String,Any}, case::Dict{String,Any}; log::Bool=false, intermediate::Bool=false, legend_position::Symbol=:best)::Vega.VGSpec
     @assert Int(get(case, "data_model", 1)) == 1 && get(case, "per_unit", true) "This function only supports plotting MATHEMATICAL data models in per-unit representation"
 
-    x = 0:length(result["nw"])-1
-    generation = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(gen["pg"]))*nw["baseMVA"] for (i, gen) in nw["gen"])) for (n, nw) in result["nw"]]; by=x->x[1])]
-    storage = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(strg["ps"]))*nw["baseMVA"] for (i, strg) in nw["storage"])) for (n, nw) in result["nw"]]; by=x->x[1])]
-    total_generated = generation .+ storage
-    total_load_served = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["status"]*case["nw"]["$n"]["load"]["$i"]["pd"]))*nw["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in result["nw"]]; by=x->x[1])]
-    total_load_forecast = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["pd"]))*case["nw"]["$n"]["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in case["nw"]]; by=x->x[1])]
+    spec = Vega.loadvgspec("src/vega/load_summary.json")
 
+    x = 0:length(result["nw"]) - 1
+    generation = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(gen["pg"])) * nw["baseMVA"] for (i, gen) in nw["gen"])) for (n, nw) in result["nw"]]; by=x -> x[1])]
+    storage = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(strg["ps"])) * nw["baseMVA"] for (i, strg) in nw["storage"])) for (n, nw) in result["nw"]]; by=x -> x[1])]
+    total_generated = generation .+ storage
+    total_load_served = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["status"] * case["nw"]["$n"]["load"]["$i"]["pd"])) * nw["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in result["nw"]]; by=x -> x[1])]
+    total_load_forecast = [x for (n, x) in sort([(parse(Int, n), sum(sum(_replace_nan(load["pd"])) * case["nw"]["$n"]["baseMVA"] for (i, load) in nw["load"])) for (n, nw) in case["nw"]]; by=x -> x[1])]
+
+    max_digits = max_digits = maximum([length("$n") for n in x])
     @debug "" total_generated total_load_served total_load_forecast
 
-    if intermediate
-        for i in x
-            Plots.plot(x[1:i+1], total_generated[1:i+1], label="Total Generation", legend=legend_position, xlims=[x[1], x[end]])
-            Plots.plot!(x[1:i+1], total_load_served[1:i+1], label="Total Load Served", legend=legend_position)
-            Plots.plot!(x[1:i+1], total_load_forecast[1:i+1], label="Total Load Forecasted", legend=legend_position)
+    spec = deepcopy(default_source_demand_summary_spec)
 
-            Plots.xaxis!("Step")
-            if log
-                Plots.yaxis!("Power (MW)", :log10)
-            else
-                Plots.yaxis!("Power (MW)")
-            end
+    power_summary_data = [
+        Dict(
+            "x" => x[i],
+            "y" => y[i],
+            "c" => c - 1,
+        ) for (c, y) in enumerate([total_generated, total_load_served, total_load_forecast]) for i in 1:length(x)
+    ]
+
+    @set! spec.data = [
+        Dict(
+            "name" => "table",
+            "values" => power_summary_data,
+            "transform" => [
+                Dict(
+                    "type" => "stack",
+                    "groupby" => ["x"],
+                    "sort" => Dict(
+                        "field" => "c"
+                    ),
+                    "field" => "y"
+                )
+            ]
+        )
+    ]
+
+    @set! spec.axes[2]["title"] = "Power (MW)"
+
+    if log
+        @set! spec.scales[2]["type"] = "log"
+    end
+
+    if intermediate
+        _tmp_data = []
+        for (i, _data) in enumerate(eachrow(reshape(power_summary_data, :, 3)))
+            append!(_tmp_data, _data)
+            @set! spec.data = [
+                Dict(
+                    "name" => "table",
+                    "values" => _tmp_data,
+                    "transform" => [
+                        Dict(
+                            "type" => "stack",
+                            "groupby" => ["x"],
+                            "sort" => Dict(
+                                "field" => "c"
+                            ),
+                            "field" => "y"
+                        )
+                    ]
+                )
+            ]
 
             filename_parts = split(file, ".")
             filename = join(filename_parts[1:end-1], ".")
             ext = filename_parts[end]
 
-            fileout = "$(filename)_$(lpad(i, Int(ceil(log10(length(x)))), "0")).$(ext)"
+            _fileout = "$(filename)_$(lpad(i, max_digits, "0")).$(ext)"
 
-            Plots.savefig(fileout)
+            Vega.save(_fileout, spec)
         end
-    end
-
-    Plots.plot(x, total_generated, label="Total Generation", legend=legend_position)
-    Plots.plot!(x, total_load_served, label="Total Load Served", legend=legend_position)
-    Plots.plot!(x, total_load_forecast, label="Total Load Forecasted", legend=legend_position)
-
-    Plots.xaxis!("Step")
-    if log
-        Plots.yaxis!("Power (MW)", :log10)
     else
-        Plots.yaxis!("Power (MW)")
+        Vega.save(file, spec)
     end
 
-    Plots.savefig(file)
+    return spec
 end
 
 
@@ -96,8 +164,7 @@ function plot_source_demand_summary(fileout::String, mn_case::Dict{String,<:Any}
     sources::Dict{String,<:Any}=default_sources_eng,
     demands::Dict{String,<:Any}=default_demands_eng,
     totals::Symbol=:real,
-    )
-
+    )::Vega.VGSpec
 
     x = 1:length(mn_case["nw"])
     total_generated = Vector{Real}(undef, length(x))
@@ -173,14 +240,51 @@ function plot_source_demand_summary(fileout::String, mn_case::Dict{String,<:Any}
     power_scale_factor = mn_case["settings"]["power_scale_factor"]
     units_str = power_scale_factor == 1.0 ? "W" : power_scale_factor == 1e3 ? "kW" : power_scale_factor == 1e6 ? "MW" : "$power_scale_factor W"
 
-    if save_intermediate_frames
-        for i in x
-            Plots.plot(x[1:i], total_generated[1:i], label="Total Generation", legend=legend_position, xlims=[x[1], x[end]])
-            Plots.plot!(x[1:i], total_demand_served[1:i], label="Total Demand Served", legend=legend_position)
-            Plots.plot!(x[1:i], total_demand_forecast[1:i], label="Total Demand Forecasted", legend=legend_position)
+    spec = deepcopy(default_source_demand_summary_spec)
 
-            Plots.xaxis!("Step")
-            Plots.yaxis!("Power ($units_str)", yscale)
+    power_summary_data = [
+        Dict(
+            "x" => x[i],
+            "y" => y[i],
+            "c" => c - 1,
+        ) for (c, y) in enumerate([total_generated, total_demand_served, total_demand_forecast]) for i in 1:length(x)
+    ]
+
+    @set! spec.data = [
+        Dict(
+            "name" => "table",
+            "values" => power_summary_data,
+            "transform" => [
+                Dict(
+                    "type" => "stack",
+                    "groupby" => ["x"],
+                    "sort" => Dict("field" => "c"),
+                    "field" => "y"
+                )
+            ]
+        )
+    ]
+
+    @set! spec.axes[2]["title"] = "Power ($units_str)"
+
+    if save_intermediate_frames
+        _tmp_data = []
+        for (i, _data) in enumerate(eachrow(reshape(power_summary_data, :, 3)))
+            append!(_tmp_data, _data)
+            @set! spec.data = [
+                Dict(
+                    "name" => "table",
+                    "values" => _tmp_data,
+                    "transform" => [
+                        Dict(
+                            "type" => "stack",
+                            "groupby" => ["x"],
+                            "sort" => Dict("field" => "c"),
+                            "field" => "y"
+                        )
+                    ]
+                )
+            ]
 
             filename_parts = split(fileout, ".")
             filename = join(filename_parts[1:end-1], ".")
@@ -188,16 +292,11 @@ function plot_source_demand_summary(fileout::String, mn_case::Dict{String,<:Any}
 
             _fileout = "$(filename)_$(lpad(i, max_digits, "0")).$(ext)"
 
-            Plots.savefig(_fileout)
+            Vega.save(_fileout, spec)
         end
+    else
+        Vega.save(fileout, spec)
     end
 
-    Plots.plot(x, total_generated, label="Total Generation", legend=legend_position)
-    Plots.plot!(x, total_demand_served, label="Total Load Served", legend=legend_position)
-    Plots.plot!(x, total_demand_forecast, label="Total Load Forecasted", legend=legend_position)
-
-    Plots.xaxis!("Step")
-    Plots.yaxis!("Power ($units_str)", yscale)
-
-    Plots.savefig(fileout)
+    return spec
 end

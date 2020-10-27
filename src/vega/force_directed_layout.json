@@ -1,0 +1,141 @@
+{
+    "$schema": "https://vega.github.io/schema/vega/v5.json",
+    "description": "A node-link diagram with force-directed layout, depicting character co-occurrence in the novel Les Misérables.",
+    "width": 700,
+    "height": 500,
+    "padding": 0,
+    "autosize": "pad",
+
+    "signals": [{
+            "name": "cx",
+            "update": "width / 2"
+        },
+        {
+            "name": "cy",
+            "update": "height / 2"
+        },
+        {
+            "name": "nodeRadius",
+            "value": 10
+        },
+        {
+            "name": "nodeCharge",
+            "value": -10
+        },
+        {
+            "name": "linkDistance",
+            "value": 15
+        }
+    ],
+
+    "data": [{
+            "name": "node-data",
+            "url": "test/example.json",
+            "format": {
+                "type": "json",
+                "property": "nodes"
+            }
+        },
+        {
+            "name": "link-data",
+            "url": "test/example.json",
+            "format": {
+                "type": "json",
+                "property": "links"
+            }
+        }
+    ],
+
+    "scales": [{
+        "name": "color",
+        "type": "ordinal",
+        "domain": {
+            "data": "node-data",
+            "field": "group"
+        },
+        "range": {
+            "scheme": "category20c"
+        }
+    }],
+
+    "marks": [{
+            "name": "nodes",
+            "type": "symbol",
+            "zindex": 1,
+
+            "from": {
+                "data": "node-data"
+            },
+
+            "encode": {
+                "enter": {
+                    "fill": {
+                        "scale": "color",
+                        "field": "group"
+                    },
+                    "stroke": {
+                        "value": "white"
+                    }
+                },
+                "update": {
+                    "size": {
+                        "signal": "2 * nodeRadius * nodeRadius"
+                    }
+                }
+            },
+
+            "transform": [{
+                "type": "force",
+                "iterations": 300,
+                "signal": "force",
+                "static": false,
+                "forces": [{
+                        "force": "center",
+                        "x": {"signal": "cx"},
+                        "y": {"signal": "cy"}
+                    },
+                    {
+                        "force": "collide",
+                        "radius": {"signal": "nodeRadius"}
+                    },
+                    {
+                        "force": "nbody",
+                        "strength": {"signal": "nodeCharge"}
+                    },
+                    {
+                        "force": "link",
+                        "links": "link-data",
+                        "distance": {"signal": "linkDistance"}
+                    }
+                ]
+            }]
+        },
+        {
+            "type": "path",
+            "from": {
+                "data": "link-data"
+            },
+            "encode": {
+                "update": {
+                    "stroke": {
+                        "value": "#ccc"
+                    },
+                    "strokeWidth": {
+                        "value": 2.0
+                    }
+                }
+            },
+            "transform": [{
+                "type": "linkpath",
+                "require": {
+                    "signal": "force"
+                },
+                "shape": "line",
+                "sourceX": "datum.source.x",
+                "sourceY": "datum.source.y",
+                "targetX": "datum.target.x",
+                "targetY": "datum.target.y"
+            }]
+        }
+    ]
+}
