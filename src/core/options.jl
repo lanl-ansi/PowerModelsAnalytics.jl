@@ -238,4 +238,4 @@ const default_node_size_limits = Vector{Real}([2, 2.5])
 const default_edge_width_limits = Vector{Real}([0.5, 0.75])
 
 "default spring constant for spring_layout"
-const default_spring_constant = 0.2
+const default_spring_constant = 1e-2

@@ -19,7 +19,7 @@ function layout_graph!(graph::InfrastructureGraph{T}, layout_engine::Function=ka
                        spring_constant::Real=default_spring_constant,
                        kwargs...) where T <: LightGraphs.AbstractGraph
     if use_coordinates
-        pos = Dict(node => get_property(graph, node, :buscoord, missing) for node in vertices(graph))
+        pos = Dict{Int,Union{Missing,Vector{Real}}}(node => get_property(graph, node, :coordinate, missing) for node in vertices(graph))
         fixed = [node for (node, p) in pos if !ismissing(p)]
 
         avg_x, avg_y = mean(hcat(skipmissing([v for v in values(pos)])...), dims=2)
@@ -29,11 +29,11 @@ function layout_graph!(graph::InfrastructureGraph{T}, layout_engine::Function=ka
                 pos[v] = [avg_x+std_x*rand(), avg_y+std_y*rand()]
             end
         end
-        positions = spring_layout(graph; pos=pos, fixed=fixed, k=spring_constant*minimum(std([p for p in values(pos)])), iterations=100)
+        positions = spring_layout(graph; pos=pos, fixed=fixed, k=spring_constant*sqrt(length(pos)), iterations=100)
     else
         positions = layout_engine(graph; kwargs...)
         if apply_spring_layout
-            positions = spring_layout(graph; pos=positions, k=spring_constant*minimum(std([p for p in values(positions)])), iterations=100)
+            positions = spring_layout(graph; pos=positions, k=spring_constant*sqrt(length(positions)), iterations=100)
         end
     end
 
