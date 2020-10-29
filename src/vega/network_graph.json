@@ -52,7 +52,7 @@
                 "data": "node-data",
                 "field": "size"
             },
-            "range": [0.25, 1]
+            "range": [1, 2]
         }
 
     ],
