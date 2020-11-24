@@ -49,6 +49,3 @@ jobs:
       - uses: codecov/codecov-action@v1
         with:
           file: lcov.info
-  skip:
-    if: "contains(github.event.head_commit.message, 'skip ci')"
-    runs-on: ubuntu-latest
