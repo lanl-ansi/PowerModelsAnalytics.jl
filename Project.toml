@@ -1,7 +1,7 @@
 name = "PowerModelsAnalytics"
 uuid = "7425d11c-6b70-11e9-2bc6-9bcd3191d4b9"
 authors = ["David M Fobes <dfobes@lanl.gov>", "Carleton Coffrin"]
-version = "0.3.0"
+version = "0.4.0"
 
 [deps]
 ColorVectorSpace = "c3611d14-8923-5661-9e6a-0046d554d3a4"
@@ -21,6 +21,7 @@ Colors = "~0.11, ~0.12"
 Compat = "~2, ~3"
 LightGraphs = "^1.3"
 PyCall = "~1.91"
+Vega = "~2"
 julia = "^1.3"
 
 [extras]

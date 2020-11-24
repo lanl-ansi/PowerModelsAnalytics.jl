@@ -20,11 +20,11 @@ should plot the network using the currently enabled backend, or e.g.
 plot_network(network_case; filename="network.pdf")
 ```
 
-will save a network plot to a file using the current backend enabled for Plots.jl, as noted in the following section.
+will save a network plot to a file using Vega.jl.
 
-## Backends for Plotting
+## Plotting
 
-This package relies on Plots.jl for plotting, so you must choose an appropriate backend for the style of plot you desire. See the Plots.jl [Documentation](http://docs.juliaplots.org/latest/install/) for additional information.
+This package relies on Vega.jl for plotting. See the Vega [Documentation](https://vega.github.io/) for additional information about how to build new Specifications.
 
 ## License
 
