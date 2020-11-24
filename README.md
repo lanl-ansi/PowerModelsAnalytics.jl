@@ -1,5 +1,7 @@
 # PowerModelsAnalytics.jl
 
+![CI](https://github.com/lanl-ansi/PowerModelsAnalytics.jl/workflows/CI/badge.svg) ![Documentation](https://github.com/lanl-ansi/PowerModelsAnalytics.jl/workflows/Documentation/badge.svg)
+
 Tools for the analysis and visualization of PowerModels data and results.
 
 **BETA / IN ACTIVE DEVELOPMENT**: Features will change quickly and without warning
