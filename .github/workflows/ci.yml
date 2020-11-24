@@ -9,7 +9,6 @@ jobs:
       PYTHON: ""
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.version == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,6 +40,7 @@ jobs:
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
+        continue-on-error: ${{ matrix.version == 'nightly' }}
         env:
           PYTHON: ""
         with:
