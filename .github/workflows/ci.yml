@@ -4,7 +4,7 @@ on:
   - pull_request
 jobs:
   test:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
     env:
       PYTHON: ""
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -50,7 +50,7 @@ jobs:
         with:
           file: lcov.info
   skip:
-    if: "contains(github.event.head_commit.message, '[skip ci]')"
+    if: "contains(toJSON(github.event.commits.*.message), '[skip ci]')"
     runs-on: ubuntu-latest
     steps:
       - name: Skip CI 🚫
