@@ -217,7 +217,7 @@ const default_demands_math = Dict{String,Any}(
 const default_plot_dpi = 100
 
 "default size of plots in pixels"
-const default_plot_size = Tuple{Int,Int}((300,300))
+const default_plot_size = Tuple{Int,Int}((600,600))
 
 "default fontsize in pt"
 const default_fontsize = 10
@@ -238,4 +238,4 @@ const default_node_size_limits = Vector{Real}([2, 2.5])
 const default_edge_width_limits = Vector{Real}([0.5, 0.75])
 
 "default spring constant for spring_layout"
-const default_spring_constant = 0.2
+const default_spring_constant = 1e-2

@@ -1,31 +1,33 @@
 name = "PowerModelsAnalytics"
 uuid = "7425d11c-6b70-11e9-2bc6-9bcd3191d4b9"
 authors = ["David M Fobes <dfobes@lanl.gov>", "Carleton Coffrin"]
-version = "0.3.0"
+version = "0.4.0"
 
 [deps]
 ColorVectorSpace = "c3611d14-8923-5661-9e6a-0046d554d3a4"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
-InfrastructureModels = "2030c09a-7f63-5d83-885d-db604e0e9cc0"
 LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Vega = "239c3e63-733f-47ad-beb7-a12fde22c578"
 
 [compat]
 ColorVectorSpace = "~0.8"
 Colors = "~0.11, ~0.12"
 Compat = "~2, ~3"
-InfrastructureModels = "~0.4, ~0.5"
 LightGraphs = "^1.3"
-Plots = "~0.28, ~1"
-PowerModels = "~0.15, ~0.17"
-PowerModelsDistribution = "~0.8, ~0.9"
+PowerModels = "~0.15, ~0.16, ~0.17"
+PowerModelsDistribution = "~0.8, ~0.9, ~0.10"
 PyCall = "~1.91"
-julia = "^1"
+Setfield = "~0.6"
+SpecialFunctions = "~0.10"
+Vega = "~2"
+julia = "^1.3"
 
 [extras]
 PowerModels = "c36e90e8-916a-50a6-bd94-075b64ef4655"

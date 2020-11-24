@@ -1,10 +1,8 @@
 module PowerModelsAnalytics
-
-    import InfrastructureModels
-
     import LightGraphs
 
-    import Plots
+    import Vega
+    import Setfield: @set!
     import Colors
     import Colors: @colorant_str
     import ColorVectorSpace
@@ -12,7 +10,6 @@ module PowerModelsAnalytics
     import LinearAlgebra: norm
     import Random: rand
     import Statistics: mean, std
-
 
     import Compat: isnothing
 
@@ -31,6 +28,8 @@ module PowerModelsAnalytics
 
     include("core/data.jl")
     include("core/parameters.jl")
+
+    include("vega/default_specs.jl")
 
     include("graph/common.jl")
     include("graph/metrics.jl")

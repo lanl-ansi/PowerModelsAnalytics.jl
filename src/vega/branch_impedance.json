@@ -1,0 +1,264 @@
+{
+    "$schema": "https://vega.github.io/schema/vega/v5.json",
+    "description": "A basic scatter plot example depicting automobile statistics.",
+    "width": 500,
+    "height": 500,
+    "padding": 5,
+
+    "data": [],
+
+    "scales": [{
+            "name": "x",
+            "type": "linear",
+            "round": true,
+            "nice": true,
+            "zero": true,
+            "domain": {
+                "data": "branch-impedances",
+                "field": "resistance"
+            },
+            "range": "width"
+        },
+        {
+            "name": "y",
+            "type": "linear",
+            "round": true,
+            "nice": true,
+            "zero": true,
+            "domain": {
+                "data": "branch-impedances",
+                "field": "reactance"
+            },
+            "range": "height"
+        },
+        {
+            "name": "resistance-xscale",
+            "type": "band",
+            "domain": {
+                "data": "binned-resistance",
+                "field": "bin0"
+            },
+            "range": "width",
+            "padding": 0.05,
+            "round": true
+        },
+        {
+            "name": "resistance-yscale",
+            "domain": {
+                "data": "binned-resistance",
+                "field": "count"
+            },
+            "nice": true,
+            "range": "height"
+        },
+        {
+            "name": "reactance-xscale",
+            "type": "band",
+            "domain": {
+                "data": "binned-reactance",
+                "field": "bin0"
+            },
+            "range": "width",
+            "padding": 0.05,
+            "round": true
+        },
+        {
+            "name": "reactance-yscale",
+            "domain": {
+                "data": "binned-reactance",
+                "field": "count"
+            },
+            "nice": true,
+            "range": "height"
+        }
+    ],
+
+    "layout": {
+        "padding": 70,
+        "bounds": "flush",
+        "align": "none"
+    },
+
+    "marks": [{
+            "type": "group",
+            "title": {
+                "text": "resistance v reactance",
+                "frame": "group"
+            },
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "width"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [{
+                "name": "marks",
+                "type": "symbol",
+                "from": {
+                    "data": "branch-impedances"
+                },
+                "encode": {
+                    "update": {
+                        "x": {
+                            "scale": "x",
+                            "field": "resistance"
+                        },
+                        "y": {
+                            "scale": "y",
+                            "field": "reactance"
+                        },
+                        "shape": {
+                            "value": "circle"
+                        },
+                        "strokeWidth": {
+                            "value": 2
+                        },
+                        "opacity": {
+                            "value": 0.5
+                        },
+                        "stroke": {
+                            "value": "#4682b4"
+                        }
+                    }
+                }
+            }],
+            "axes": [{
+                    "scale": "x",
+                    "grid": true,
+                    "domain": false,
+                    "orient": "bottom",
+                    "tickCount": 5,
+                    "title": "Resistance (p.u.)"
+                },
+                {
+                    "scale": "y",
+                    "grid": true,
+                    "domain": false,
+                    "orient": "left",
+                    "titlePadding": 5,
+                    "title": "Reactance (p.u.)"
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "title": "resistance histogram",
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "width"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [{
+                "type": "rect",
+                "from": {
+                    "data": "binned-resistance"
+                },
+                "encode": {
+                    "enter": {
+                        "x": {
+                            "scale": "resistance-xscale",
+                            "field": "bin0"
+                        },
+                        "width": {
+                            "scale": "resistance-xscale",
+                            "band": 1
+                        },
+                        "y": {
+                            "scale": "resistance-yscale",
+                            "field": "count"
+                        },
+                        "y2": {
+                            "scale": "resistance-yscale",
+                            "value": 0
+                        }
+                    },
+                    "update": {
+                        "fill": {
+                            "value": "steelblue"
+                        }
+                    }
+                }
+            }],
+            "axes": [{
+                    "orient": "bottom",
+                    "scale": "resistance-xscale",
+                    "labelAngle": 45,
+                    "labelAlign": "left",
+                    "title": "resistance (p.u.)"
+                },
+                {
+                    "orient": "left",
+                    "scale": "resistance-yscale",
+                    "title": "count"
+                }
+            ]
+        },
+        {
+            "type": "group",
+            "title": "reactance histogram",
+            "encode": {
+                "update": {
+                    "width": {
+                        "signal": "width"
+                    },
+                    "height": {
+                        "signal": "height"
+                    }
+                }
+            },
+            "marks": [{
+                "type": "rect",
+                "from": {
+                    "data": "binned-reactance"
+                },
+                "encode": {
+                    "enter": {
+                        "x": {
+                            "scale": "reactance-xscale",
+                            "field": "bin0"
+                        },
+                        "width": {
+                            "scale": "reactance-xscale",
+                            "band": 1
+                        },
+                        "y": {
+                            "scale": "reactance-yscale",
+                            "field": "count"
+                        },
+                        "y2": {
+                            "scale": "reactance-yscale",
+                            "value": 0
+                        }
+                    },
+                    "update": {
+                        "fill": {
+                            "value": "steelblue"
+                        }
+                    }
+                }
+            }],
+            "axes": [{
+                    "orient": "bottom",
+                    "scale": "reactance-xscale",
+                    "labelAngle": 45,
+                    "labelAlign": "left",
+                    "title": "reactance (p.u.)"
+                },
+                {
+                    "orient": "left",
+                    "scale": "reactance-yscale",
+                    "title": "count"
+                }
+            ]
+        }
+    ]
+}

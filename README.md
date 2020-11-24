@@ -1,5 +1,7 @@
 # PowerModelsAnalytics.jl
 
+![CI](https://github.com/lanl-ansi/PowerModelsAnalytics.jl/workflows/CI/badge.svg) ![Documentation](https://github.com/lanl-ansi/PowerModelsAnalytics.jl/workflows/Documentation/badge.svg)
+
 Tools for the analysis and visualization of PowerModels data and results.
 
 **BETA / IN ACTIVE DEVELOPMENT**: Features will change quickly and without warning
@@ -20,11 +22,11 @@ should plot the network using the currently enabled backend, or e.g.
 plot_network(network_case; filename="network.pdf")
 ```
 
-will save a network plot to a file using the current backend enabled for Plots.jl, as noted in the following section.
+will save a network plot to a file using Vega.jl.
 
-## Backends for Plotting
+## Plotting
 
-This package relies on Plots.jl for plotting, so you must choose an appropriate backend for the style of plot you desire. See the Plots.jl [Documentation](http://docs.juliaplots.org/latest/install/) for additional information.
+This package relies on Vega.jl for plotting. See the Vega [Documentation](https://vega.github.io/) for additional information about how to build new Specifications.
 
 ## License
 

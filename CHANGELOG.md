@@ -4,6 +4,12 @@
 
 - none
 
+## v0.4.0
+
+- Updated backend to Vega.jl, removing Plots.jl
+- Minimum Julia v1.3 required for Vega.jl
+- Removed Travis-CI, switching to Github Actions
+
 ## v0.3.0
 
 - Makes `build_network_graph` more agnostic to type of Infrastructure network being graphed

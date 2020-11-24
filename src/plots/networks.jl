@@ -92,9 +92,9 @@ function plot_network(graph::InfrastructureGraph{T};
     )
 
     if isempty(filename)
-        Plots.display(fig)
+        display(fig)
     else
-        Plots.savefig(fig, filename)
+        Vega.save(filename, fig)
     end
 
     return graph

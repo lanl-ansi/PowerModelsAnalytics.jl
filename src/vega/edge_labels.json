@@ -1,0 +1,18 @@
+{
+    "type": "text",
+    "from": {
+        "data": "link-data"
+    },
+    "encode": {
+        "update": {
+            "text": {
+                "field": "label"
+            },
+            "x": {"scale": "x"},
+            "y": {"scale": "y"},
+            "dx": {
+                "value": 5
+            }
+        }
+    }
+}
