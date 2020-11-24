@@ -41,6 +41,8 @@ jobs:
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
+        env:
+          PYTHON: ""
         with:
           depwarn: error
       - uses: julia-actions/julia-processcoverage@v1
