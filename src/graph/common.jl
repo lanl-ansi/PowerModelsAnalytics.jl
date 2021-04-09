@@ -186,8 +186,8 @@ function build_network_graph(case::Dict{String,<:Any};
                 :edge_membership => "$disabled $open $fixed edge",
             )
 
+            edges_set = Set{Any}()
             if !isempty(nodes_key) && haskey(edge, nodes_key)
-                edges_set = Set{Any}()
                 for f_node in edge[nodes_key]
                     for t_node in edge[nodes_key]
                         if f_node != t_node
@@ -196,7 +196,9 @@ function build_network_graph(case::Dict{String,<:Any};
                     end
                 end
             else
-                edges_set = Set{Any}([Set([edge[f_key], edge[t_key]])])
+                if edge[f_key] != edge[t_key]
+                    edges_set = Set{Any}([Set([edge[f_key], edge[t_key]])])
+                end
             end
 
             for (f_node, t_node) in edges_set
