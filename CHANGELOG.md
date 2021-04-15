@@ -4,6 +4,11 @@
 
 - none
 
+## v0.4.1
+
+- Adds plot_network! functions that will return figure instead of graph; useful for generating plots in Pluto notebooks
+- Fixes a bug in build_graph where one part of the graph builder conditional would not check to see if the nodes on either side of the edge were the same
+
 ## v0.4.0
 
 - Updated backend to Vega.jl, removing Plots.jl
