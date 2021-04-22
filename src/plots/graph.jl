@@ -36,7 +36,7 @@ function plot_graph(graph::InfrastructureGraph{T};
             "x"=>get_property(graph, node, :x, 0),
             "y"=>get_property(graph, node, :y, 0),
             "color"=>"#$(Colors.hex(get_property(graph, node, :node_color, colorant"black")))",
-            "size"=>get_property(graph, node, :size, 1),
+            "size"=>get_property(graph, node, :size, 10),
             "label"=>get_property(graph, node, :label, "")
         ) for node in vertices(graph)
     ]

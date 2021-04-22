@@ -33,26 +33,26 @@
         {
             "name": "size",
             "type": "linear",
-            "round": true,
+            "round": false,
             "nice": false,
-            "zero": true,
+            "zero": false,
             "domain": {
                 "data": "node-data",
                 "field": "size"
             },
-            "range": [10, 30]
+            "range": [50, 100]
         },
         {
             "name": "width",
             "type": "linear",
-            "round": true,
+            "round": false,
             "nice": false,
-            "zero": true,
+            "zero": false,
             "domain": {
                 "data": "node-data",
                 "field": "size"
             },
-            "range": [1, 2]
+            "range": [1, 10]
         }
 
     ],
