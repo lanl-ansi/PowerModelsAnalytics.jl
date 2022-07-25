@@ -83,7 +83,7 @@ function calc_connected_components(data::Dict{String,<:Any}; node_settings::Dict
         end
     end
 
-    active_node = Dict{Any,Dict{String,Any}}(x for x in data[get(node_settings, "node", "bus")] if Int(x.second[get(node_settings, "disabled", "bus_type" => 4)[1]]) != get(node_settings, "disabled", "bus_type" => 4))
+    active_node = Dict{Any,Dict{String,Any}}(x for x in data[get(node_settings, "node", "bus")] if Int(x.second[get(node_settings, "disabled", "bus_type" => 4)[1]]) != get(node_settings, "disabled", "bus_type" => 4)[2])
     active_node_ids = Set{Any}([i for (i,node) in active_node])
 
     neighbors = Dict{Any,Vector{Any}}(i => [] for i in active_node_ids)
