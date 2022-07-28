@@ -50,4 +50,23 @@ using Test
 
     end
 
+    @testset "identify_blocks" begin
+        node_settings = Dict{String,Any}(
+            "node" => "bus",
+                "disabled" => "status" => 0,  # changed to status from bus_type
+                "x" => "lon",
+                "y" => "lat",
+        )
+        case = PowerModels.parse_file("$(joinpath(dirname(pathof(PowerModels)), ".."))/test/data/matpower/case5.m")
+        for (busid,bus) in case["bus"]
+            bus["status"] = 0 # set all nodes inactive
+        end
+        for (branchid,branch) in case["branch"] # set branches inactive
+            branch["br_status"] = 0
+        end
+
+        blocks = identify_blocks(case; node_settings)
+        @test isempty(blocks)  # no active nodes, should be no blocks in network
+    end
+
 end

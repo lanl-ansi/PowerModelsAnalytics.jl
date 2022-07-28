@@ -3,6 +3,7 @@
 ## staged
 
 - Update minimum Julia version to v1.6 (LTS)
+- Fix bug in `identify_blocks` for non-default bus status values
 
 ## v0.4.1
 
