@@ -2,7 +2,7 @@
 
 ## staged
 
-- none
+- Update minimum Julia version to v1.6 (LTS)
 
 ## v0.4.1
 
